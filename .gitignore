@@ -1,5 +1,51 @@
+# ============================================================
+# Radar FIDC — .gitignore
+# ============================================================
+
+# Credenciais e variáveis de ambiente (NUNCA commitar)
+.env
+*.env
+.env.local
+
+# Arquivos internos do projeto (orquestrador interno)
 AGENT.md
 MEMORY.md
 POWERBI_SETUP.md
 ralph.sh
 prd.json
+ralph.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Dados locais (usar ADLS Gen2 como fonte de verdade)
+data/
+*.parquet
+*.csv
+
+# macOS
+.DS_Store
+.AppleDouble
+._*
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,20 @@
+# Radar FIDC — Dependências Python
+# Instalar com: pip install -r requirements.txt
+# Python >= 3.10
+
+# Azure Storage
+azure-storage-blob>=12.19.0
+
+# Data processing
+pandas>=2.0.0
+pyarrow>=14.0.0
+numpy>=1.26.0
+
+# HTTP / API
+requests>=2.31.0
+
+# Databricks (para execução local via REST API)
+databricks-sdk>=0.20.0
+
+# Utilitários
+python-dotenv>=1.0.0
