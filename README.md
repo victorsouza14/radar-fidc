@@ -225,6 +225,10 @@ Score ponderado de **0 a 100** por FIDC:
 | Membro | RM |
 |--------|-----|
 | Victor de Souza Braga | RM567360 |
+| Andre Marques | RM566584 |
+| Jony Wesley Sousa Melo | RM567392 |
+| Diogo Alves Moitinho | RM566652 |
+| Fernando Florence | RM567445 |
 
 ---
 
