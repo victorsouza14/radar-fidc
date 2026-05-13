@@ -4,332 +4,156 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radar FIDC — Data Fishermans</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<style>
-  :root {
-    --green: #3D5A40;
-    --green-light: #5a7a5e;
-    --green-dark: #2a3d2c;
-    --cream: #F5F0E8;
-    --cream-dark: #e8e0d0;
-    --white: #ffffff;
-    --gray: #6b7280;
-    --gray-light: #f3f4f6;
-    --classA: #2ECC71;
-    --classB: #F39C12;
-    --classC: #E67E22;
-    --classD: #E74C3C;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--cream); color: #1a1a1a; }
+<meta name="description" content="Plataforma de análise, scoring e recomendação de FIDCs para PMEs. Dados ANBIMA + BCB + CVM.">
+<meta name="theme-color" content="#093A1B">
+<meta name="referrer" content="no-referrer">
 
-  /* HEADER */
-  header {
-    background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%);
-    color: white; padding: 0;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  }
-  .header-inner {
-    max-width: 1400px; margin: 0 auto;
-    padding: 24px 32px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .logo { display: flex; align-items: center; gap: 16px; }
-  .logo-icon {
-    width: 52px; height: 52px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px;
-  }
-  .logo-text h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.5px; }
-  .logo-text p { font-size: 0.85rem; opacity: 0.75; margin-top: 2px; }
-  .header-badge {
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 8px; padding: 8px 16px;
-    font-size: 0.8rem; text-align: right; line-height: 1.5;
-  }
+<!-- CSP: restringe origem de scripts/styles. Bloqueia execução inline acidental. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self'">
 
-  /* NAV */
-  nav {
-    background: var(--green-dark);
-    border-top: 1px solid rgba(255,255,255,0.1);
-  }
-  .nav-inner {
-    max-width: 1400px; margin: 0 auto;
-    padding: 0 32px;
-    display: flex; gap: 0;
-  }
-  .nav-btn {
-    background: none; border: none; color: rgba(255,255,255,0.65);
-    padding: 14px 20px; font-size: 0.88rem; font-weight: 500;
-    cursor: pointer; border-bottom: 3px solid transparent;
-    transition: all 0.2s; white-space: nowrap;
-  }
-  .nav-btn:hover { color: white; }
-  .nav-btn.active { color: white; border-bottom-color: #7fbf85; }
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="assets/site.webmanifest">
+<link rel="shortcut icon" href="assets/favicon.ico">
 
-  /* MAIN */
-  main { max-width: 1400px; margin: 0 auto; padding: 32px; }
-  .page { display: none; }
-  .page.active { display: block; }
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  /* KPI CARDS */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px; margin-bottom: 32px;
-  }
-  .kpi-card {
-    background: white;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    border-left: 5px solid var(--green);
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
-  .kpi-card.accent { border-left-color: var(--classB); }
-  .kpi-card.info { border-left-color: #3b82f6; }
-  .kpi-card.success { border-left-color: var(--classA); }
-  .kpi-label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); margin-bottom: 8px; }
-  .kpi-value { font-size: 2rem; font-weight: 700; color: var(--green-dark); line-height: 1; }
-  .kpi-sub { font-size: 0.78rem; color: var(--gray); margin-top: 6px; }
+<link rel="stylesheet" href="assets/css/main.css">
 
-  /* SECTION */
-  .section-title {
-    font-size: 1.2rem; font-weight: 700; color: var(--green-dark);
-    margin-bottom: 20px; padding-bottom: 10px;
-    border-bottom: 2px solid var(--cream-dark);
-    display: flex; align-items: center; gap: 10px;
-  }
-  .section-title span { font-size: 1.4rem; }
-
-  /* GRID 2 col */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
-
-  /* CARD */
-  .card {
-    background: white; border-radius: 16px;
-    padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  }
-  .card-title {
-    font-size: 0.95rem; font-weight: 600; color: var(--green-dark);
-    margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
-  }
-  .chart-container { position: relative; height: 320px; }
-  .chart-container.tall { height: 400px; }
-
-  /* TABLE */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  thead tr { background: var(--green); color: white; }
-  thead th { padding: 12px 14px; text-align: left; font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
-  tbody tr { border-bottom: 1px solid var(--cream-dark); transition: background 0.15s; }
-  tbody tr:hover { background: #f0f7f1; }
-  tbody td { padding: 11px 14px; }
-  .rank-badge {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 26px; height: 26px; border-radius: 50%;
-    font-weight: 700; font-size: 0.78rem;
-  }
-  .rank-1 { background: #ffd700; color: #7a5c00; }
-  .rank-2 { background: #c0c0c0; color: #444; }
-  .rank-3 { background: #cd7f32; color: white; }
-  .rank-other { background: var(--cream-dark); color: var(--gray); }
-
-  /* CLASS BADGE */
-  .badge {
-    display: inline-block; padding: 3px 10px;
-    border-radius: 20px; font-size: 0.75rem; font-weight: 700;
-  }
-  .badge-A { background: #d1fae5; color: #065f46; }
-  .badge-B { background: #fef3c7; color: #92400e; }
-  .badge-C { background: #ffedd5; color: #9a3412; }
-  .badge-D { background: #fee2e2; color: #991b1b; }
-
-  /* PME FILTER */
-  .segmento-filter {
-    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px;
-  }
-  .seg-btn {
-    padding: 8px 18px; border-radius: 24px; border: 2px solid var(--green);
-    background: white; color: var(--green); font-size: 0.85rem; font-weight: 600;
-    cursor: pointer; transition: all 0.2s;
-  }
-  .seg-btn:hover, .seg-btn.active {
-    background: var(--green); color: white;
-  }
-
-  /* PME CARDS */
-  .pme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-  .pme-card {
-    background: white; border-radius: 16px; padding: 22px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    border-top: 4px solid var(--green);
-    transition: transform 0.2s;
-  }
-  .pme-card:hover { transform: translateY(-3px); }
-  .pme-rank { font-size: 0.75rem; color: var(--gray); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; }
-  .pme-nome { font-size: 0.95rem; font-weight: 700; color: var(--green-dark); margin-bottom: 12px; line-height: 1.3; }
-  .pme-meta { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
-  .pme-score { font-size: 1.4rem; font-weight: 700; color: var(--green); }
-  .pme-just { font-size: 0.78rem; color: var(--gray); line-height: 1.5; margin-top: 8px; border-top: 1px solid var(--cream-dark); padding-top: 8px; }
-
-  /* MACRO */
-  .macro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
-  .macro-card {
-    background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%);
-    border-radius: 16px; padding: 22px; color: white; text-align: center;
-  }
-  .macro-label { font-size: 0.78rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
-  .macro-value { font-size: 2.2rem; font-weight: 700; }
-  .macro-unit { font-size: 0.85rem; opacity: 0.8; margin-top: 2px; }
-
-  .cenario-box {
-    background: white; border-radius: 16px; padding: 24px;
-    border-left: 6px solid var(--classA); margin-bottom: 24px;
-  }
-  .cenario-title { font-size: 1rem; font-weight: 700; color: var(--green-dark); margin-bottom: 8px; }
-  .cenario-text { color: var(--gray); font-size: 0.9rem; line-height: 1.6; }
-
-  /* FOOTER */
-  footer {
-    background: var(--green-dark); color: rgba(255,255,255,0.6);
-    text-align: center; padding: 20px; font-size: 0.8rem; margin-top: 40px;
-  }
-  footer strong { color: rgba(255,255,255,0.9); }
-</style>
+<script defer
+  src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+  integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g"
+  crossorigin="anonymous"
+  referrerpolicy="no-referrer"></script>
+<script defer type="module" src="assets/js/main.js"></script>
 </head>
 <body>
 
 <header>
   <div class="header-inner">
     <div class="logo">
-      <div class="logo-icon">🎣</div>
+      <div class="logo-mark"><img src="assets/logo.png" alt="Radar FIDC"></div>
       <div class="logo-text">
         <h1>Radar FIDC</h1>
-        <p>Plataforma de análise e recomendação de FIDCs para PMEs</p>
+        <p>Análise, scoring e recomendação de FIDCs para PMEs</p>
       </div>
     </div>
     <div class="header-badge">
-      <div><strong>Data Fishermans</strong></div>
-      <div>FIAP — Sprint Final 2026</div>
+      <strong>Data Fishermans</strong>
+      FIAP — Sprint Final 2026
     </div>
   </div>
 </header>
 
 <nav>
-  <div class="nav-inner">
-    <button class="nav-btn active" onclick="showPage('overview', this)">📊 Visão Geral</button>
-    <button class="nav-btn" onclick="showPage('score', this)">🎯 Score & Risco</button>
-    <button class="nav-btn" onclick="showPage('macro', this)">📈 Cenário Macro</button>
-    <button class="nav-btn" onclick="showPage('pme', this)">🏢 Recomendação PME</button>
+  <div class="nav-inner" id="nav">
+    <button class="nav-btn active" data-page="overview">📊 Visão Geral</button>
+    <button class="nav-btn" data-page="fidcs">🏦 FIDCs</button>
+    <button class="nav-btn" data-page="macro">📈 Cenário Macro</button>
+    <button class="nav-btn" data-page="clientes">👥 Clientes</button>
+    <button class="nav-btn" data-page="match">🎯 Match</button>
+    <button class="nav-btn" data-page="credit">💳 Credit Scoring</button>
   </div>
 </nav>
 
 <main>
 
-<!-- PAGE 1: OVERVIEW -->
-<div id="page-overview" class="page active">
+<!-- ─── VISÃO GERAL ─── -->
+<section id="page-overview" class="page active">
   <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">Total de FIDCs</div>
-      <div class="kpi-value" id="kpi-total">—</div>
-      <div class="kpi-sub">Monitorados pela plataforma</div>
+    <div class="kpi-card"><div class="kpi-label">FIDCs analisados</div><div class="kpi-value" id="kpi-fundos">—</div><div class="kpi-sub" id="kpi-classes">—</div></div>
+    <div class="kpi-card success"><div class="kpi-label">Clientes cadastrados</div><div class="kpi-value" id="kpi-clientes">—</div><div class="kpi-sub" id="kpi-clientes-perfis">—</div></div>
+    <div class="kpi-card accent"><div class="kpi-label">Empresas avaliadas (crédito)</div><div class="kpi-value" id="kpi-empresas">—</div><div class="kpi-sub" id="kpi-credit-default">—</div></div>
+    <div class="kpi-card info"><div class="kpi-label">SELIC atual</div><div class="kpi-value" id="kpi-selic">—</div><div class="kpi-sub" id="kpi-cenario">—</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🍩 Distribuição dos FIDCs por risco</div>
+      <div class="chart-container"><canvas id="chart-risco"></canvas></div>
     </div>
-    <div class="kpi-card success">
-      <div class="kpi-label">Melhor Score</div>
-      <div class="kpi-value" id="kpi-best">—</div>
-      <div class="kpi-sub" id="kpi-best-name">—</div>
-    </div>
-    <div class="kpi-card accent">
-      <div class="kpi-label">Score Médio</div>
-      <div class="kpi-value" id="kpi-avg">—</div>
-      <div class="kpi-sub">de 0 a 100</div>
-    </div>
-    <div class="kpi-card info">
-      <div class="kpi-label">SELIC Atual</div>
-      <div class="kpi-value" id="kpi-selic">—</div>
-      <div class="kpi-sub">Cenário favorável pós-fixado</div>
+    <div class="card">
+      <div class="card-title">👤 Perfil sugerido (todos os FIDCs)</div>
+      <div class="chart-container"><canvas id="chart-perfil"></canvas></div>
     </div>
   </div>
 
-  <div class="section-title"><span>🏆</span> Top 10 FIDCs por Score</div>
+  <div class="section-title"><span>🏆</span> Top 10 FIDCs por menor risco com retorno positivo</div>
   <div class="card" style="margin-bottom:24px">
-    <div class="chart-container tall">
-      <canvas id="chart-ranking"></canvas>
-    </div>
+    <div class="chart-container tall"><canvas id="chart-top10"></canvas></div>
   </div>
 
   <div class="card">
-    <div class="card-title">📋 Tabela de Ranking</div>
+    <div class="card-title">📋 Ranking — fundos mais recomendados nos matches</div>
     <div class="table-wrap">
-      <table id="table-ranking">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Nome do FIDC</th>
-            <th>Score</th>
-            <th>Classe</th>
-            <th>Retorno Est. 12m</th>
-          </tr>
-        </thead>
+      <table>
+        <thead><tr>
+          <th>Fundo</th><th>Cota</th><th>Risco</th><th>Retorno a.a.</th>
+          <th>Recomendado</th><th>Match médio</th>
+        </tr></thead>
         <tbody id="tbody-ranking"></tbody>
       </table>
     </div>
   </div>
-</div>
+</section>
 
-<!-- PAGE 2: SCORE & RISCO -->
-<div id="page-score" class="page">
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">🍩 Distribuição por Classificação</div>
-      <div class="chart-container">
-        <canvas id="chart-donut"></canvas>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">📊 Componentes do Score — Top 5</div>
-      <div class="chart-container">
-        <canvas id="chart-radar"></canvas>
-      </div>
+<!-- ─── FIDCs ─── -->
+<section id="page-fidcs" class="page">
+  <div class="card" style="margin-bottom:24px">
+    <div class="filter-row">
+      <input type="text" id="f-fidc-busca" class="input" placeholder="🔍 Buscar por nome do fundo ou CNPJ">
+      <select id="f-fidc-risco" class="input">
+        <option value="">Risco: todos</option>
+        <option value="BAIXO">BAIXO</option><option value="MEDIO">MÉDIO</option><option value="ALTO">ALTO</option>
+      </select>
+      <select id="f-fidc-cota" class="input">
+        <option value="">Cota: todas</option>
+        <option value="SENIOR">Senior</option><option value="MEZANINO">Mezanino</option>
+        <option value="JUNIOR">Júnior</option><option value="UNICA">Única</option>
+      </select>
+      <select id="f-fidc-perfil" class="input">
+        <option value="">Perfil: todos</option>
+        <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
+      </select>
+      <button class="seg-btn active" id="f-fidc-clear">Limpar</button>
     </div>
   </div>
+
+  <div class="grid-2" style="margin-bottom:24px">
+    <div class="card">
+      <div class="card-title">⚡ Retorno × Score de Risco</div>
+      <div class="chart-container tall"><canvas id="chart-scatter"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Distribuição por tipo de cota</div>
+      <div class="chart-container tall"><canvas id="chart-cota"></canvas></div>
+    </div>
+  </div>
+
   <div class="card">
-    <div class="card-title">⚡ Dispersão — Score × Retorno Esperado (amostra de 300 FIDCs)</div>
-    <div class="chart-container tall">
-      <canvas id="chart-scatter"></canvas>
+    <div class="card-title" id="fidcs-count">FIDCs filtrados</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Fundo</th><th>Cota</th><th>Risco</th><th>Score risco</th>
+          <th>Perfil</th><th>Retorno a.a.</th><th>Vol.</th><th>Inad.</th><th>Hist.</th>
+        </tr></thead>
+        <tbody id="tbody-fidcs"></tbody>
+      </table>
     </div>
   </div>
-</div>
+</section>
 
-<!-- PAGE 3: MACRO -->
-<div id="page-macro" class="page">
+<!-- ─── CENÁRIO MACRO ─── -->
+<section id="page-macro" class="page">
   <div class="macro-grid">
-    <div class="macro-card">
-      <div class="macro-label">SELIC Atual</div>
-      <div class="macro-value" id="m-selic">—</div>
-      <div class="macro-unit">% ao ano</div>
-    </div>
-    <div class="macro-card">
-      <div class="macro-label">IPCA 12 meses</div>
-      <div class="macro-value" id="m-ipca">—</div>
-      <div class="macro-unit">% acumulado</div>
-    </div>
-    <div class="macro-card">
-      <div class="macro-label">CDI</div>
-      <div class="macro-value" id="m-cdi">—</div>
-      <div class="macro-unit">% ao ano</div>
-    </div>
-    <div class="macro-card">
-      <div class="macro-label">SELIC Projetada 12m</div>
-      <div class="macro-value" id="m-selic-proj">—</div>
-      <div class="macro-unit">Projeção Focus</div>
-    </div>
+    <div class="macro-card"><div class="macro-label">SELIC Meta</div>     <div class="macro-value" id="m-selic">—</div><div class="macro-unit">% ao ano</div></div>
+    <div class="macro-card"><div class="macro-label">CDI</div>            <div class="macro-value" id="m-cdi">—</div>  <div class="macro-unit">% ao ano</div></div>
+    <div class="macro-card"><div class="macro-label">IPCA 12m</div>       <div class="macro-value" id="m-ipca">—</div> <div class="macro-unit">% acumulado</div></div>
+    <div class="macro-card"><div class="macro-label">SELIC Projetada</div><div class="macro-value" id="m-selic-proj">—</div><div class="macro-unit">próximos 12m</div></div>
   </div>
 
   <div class="cenario-box">
@@ -340,295 +164,135 @@
   <div class="grid-2">
     <div class="card">
       <div class="card-title">📊 Comparativo de Indicadores</div>
-      <div class="chart-container">
-        <canvas id="chart-macro-bar"></canvas>
-      </div>
+      <div class="chart-container"><canvas id="chart-macro-bar"></canvas></div>
     </div>
     <div class="card">
-      <div class="card-title">🎯 Impacto Macro nos FIDCs</div>
-      <div style="padding: 10px 0;">
-        <div style="display:flex; align-items:center; gap:12px; padding:14px; background:#d1fae5; border-radius:10px; margin-bottom:12px;">
-          <span style="font-size:1.5rem">✅</span>
-          <div>
-            <div style="font-weight:700; color:#065f46; font-size:0.9rem">FIDCs Pós-Fixados (CDI+)</div>
-            <div style="color:#047857; font-size:0.82rem; margin-top:2px">Beneficiados pela SELIC alta de 15%. Maior atratividade relativa frente à renda fixa.</div>
-          </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:12px; padding:14px; background:#fef3c7; border-radius:10px; margin-bottom:12px;">
-          <span style="font-size:1.5rem">⚠️</span>
-          <div>
-            <div style="font-weight:700; color:#92400e; font-size:0.9rem">FIDCs Pré-Fixados</div>
-            <div style="color:#b45309; font-size:0.82rem; margin-top:2px">Cenário menos favorável com SELIC projetada ainda elevada em 14,5%.</div>
-          </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:12px; padding:14px; background:#eff6ff; border-radius:10px;">
-          <span style="font-size:1.5rem">📌</span>
-          <div>
-            <div style="font-weight:700; color:#1e40af; font-size:0.9rem">IPCA em 3,15%</div>
-            <div style="color:#2563eb; font-size:0.82rem; margin-top:2px">IPCA controlado = retorno real dos FIDCs CDI+ permanece positivo e atrativo.</div>
-          </div>
-        </div>
+      <div class="card-title">📉 Inadimplência PJ vs PF</div>
+      <div class="chart-container"><canvas id="chart-inad"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CLIENTES ─── -->
+<section id="page-clientes" class="page">
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value" id="kc-total">—</div><div class="kpi-sub">clientes cadastrados</div></div>
+    <div class="kpi-card success"><div class="kpi-label">Conservadores</div><div class="kpi-value" id="kc-cons">—</div><div class="kpi-sub" id="kc-cons-pct">—</div></div>
+    <div class="kpi-card accent"><div class="kpi-label">Moderados</div><div class="kpi-value" id="kc-mod">—</div><div class="kpi-sub" id="kc-mod-pct">—</div></div>
+    <div class="kpi-card info"><div class="kpi-label">Arrojados</div><div class="kpi-value" id="kc-arr">—</div><div class="kpi-sub" id="kc-arr-pct">—</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px">
+    <div class="filter-row">
+      <input type="text" id="f-cli-busca" class="input" placeholder="🔍 Buscar por nome ou CPF">
+      <select id="f-cli-perfil" class="input">
+        <option value="">Perfil: todos</option>
+        <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 Base de clientes</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Nome</th><th>CPF</th><th>Idade</th><th>Perfil</th>
+          <th>Score perfil</th><th>Experiência</th><th>Horizonte</th><th>Cadastro</th>
+        </tr></thead>
+        <tbody id="tbody-clientes"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ─── MATCH ─── -->
+<section id="page-match" class="page">
+  <div class="card" style="margin-bottom:24px">
+    <div class="filter-row">
+      <select id="f-match-cliente" class="input" style="min-width:280px">
+        <option value="">Selecione um cliente…</option>
+      </select>
+      <select id="f-match-perfil" class="input">
+        <option value="">Perfil do cliente: todos</option>
+        <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
+      </select>
+      <button class="seg-btn active" id="f-match-clear">Limpar</button>
+    </div>
+  </div>
+
+  <div id="match-cards"></div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title" id="match-table-title">Todos os matches</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Cliente</th><th>Perfil</th><th>Fundo recomendado</th>
+          <th>Cota</th><th>Risco</th><th>Retorno</th><th>Match</th><th>Motivo</th>
+        </tr></thead>
+        <tbody id="tbody-match"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CREDIT SCORING ─── -->
+<section id="page-credit" class="page">
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-label">Empresas avaliadas</div><div class="kpi-value" id="kr-total">—</div><div class="kpi-sub">com modelo de inadimplência</div></div>
+    <div class="kpi-card success"><div class="kpi-label">Risco baixo</div><div class="kpi-value" id="kr-baixo">—</div><div class="kpi-sub" id="kr-baixo-pct">—</div></div>
+    <div class="kpi-card accent"><div class="kpi-label">Risco médio</div><div class="kpi-value" id="kr-medio">—</div><div class="kpi-sub" id="kr-medio-pct">—</div></div>
+    <div class="kpi-card danger"><div class="kpi-label">Risco alto</div><div class="kpi-value" id="kr-alto">—</div><div class="kpi-sub" id="kr-alto-pct">—</div></div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:24px">
+    <div class="card">
+      <div class="card-title">🍩 Distribuição de risco de crédito</div>
+      <div class="chart-container"><canvas id="chart-credit-donut"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Modelo</div>
+      <div style="font-size:0.9rem;color:var(--ink-700);line-height:1.7">
+        <p><strong>Algoritmo:</strong> XGBoost (gradient boosting) com 5-fold cross-validation.</p>
+        <p><strong>Features:</strong> total de boletos, valor médio, atraso médio, % atraso 1–30d, índice de liquidez (sacado/cedente), CNAE, UF, score quantidade/materialidade.</p>
+        <p><strong>Target:</strong> default = boleto protestado, vencido sem pagamento ou atraso &gt; 30 dias.</p>
+        <p><strong>Saída:</strong> score 0–100 (quanto maior, menor o risco) e classificação <span class="badge badge-A">BAIXO</span> <span class="badge badge-B">MÉDIO</span> <span class="badge badge-D">ALTO</span>.</p>
       </div>
     </div>
   </div>
-</div>
 
-<!-- PAGE 4: PME -->
-<div id="page-pme" class="page">
-  <div style="background:white; border-radius:16px; padding:24px; margin-bottom:24px; box-shadow:0 2px 12px rgba(0,0,0,0.06);">
-    <div class="section-title" style="margin-bottom:16px"><span>🏢</span> Filtrar por Segmento de PME</div>
-    <div class="segmento-filter" id="seg-filter"></div>
-  </div>
-  <div class="pme-grid" id="pme-cards"></div>
-  <div class="card" style="margin-top:24px">
-    <div class="card-title">📊 Score por FIDC Recomendado</div>
-    <div class="chart-container">
-      <canvas id="chart-pme-bar"></canvas>
+  <div class="card" style="margin-bottom:24px">
+    <div class="filter-row">
+      <select id="f-credit-risco" class="input">
+        <option value="">Risco: todos</option>
+        <option value="BAIXO">BAIXO</option><option value="MEDIO">MÉDIO</option><option value="ALTO">ALTO</option>
+      </select>
+      <input type="text" id="f-credit-busca" class="input" placeholder="🔍 Buscar por id_cnpj">
     </div>
   </div>
-</div>
+
+  <div class="card">
+    <div class="card-title" id="credit-count">Empresas (amostra)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>ID</th><th>Score</th><th>Prob. default</th><th>Risco</th>
+          <th>Total boletos</th><th>Defaults</th><th>% default histórico</th>
+        </tr></thead>
+        <tbody id="tbody-credit"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
 
 </main>
 
 <footer>
   <strong>Radar FIDC</strong> — Data Fishermans | FIAP Sprint Final 2026 |
-  Dados: ANBIMA + BCB | Atualizado em <span id="footer-date"></span>
+  Dados reais: ANBIMA + BCB + CVM + base proprietária |
+  Atualizado em <span id="footer-date">—</span>
 </footer>
 
-<script>
-const DATA = {"macro":{"selic":15.0,"ipca":3.15,"cdi":14.65,"selic_proj":14.5,"cenario":"favoravel_posfixado","descricao":"SELIC 15.0% favorece FIDCs pos-fixados (CDI+). Alta remuneracao relativa.","data_ref":"2026-03-25"},"stats":{"total_fidcs":2489,"score_medio":46.5,"classes":{"C":2489}},"top20":[{"nome":"Fundo De Investimento Em Direitos Creditórios","score":57.0,"classe":"C","retorno":80.0,"cnpj":"F0000380873"},{"nome":"Haoc Fundo De Investimento Em Direitos Credit","score":56.0,"classe":"C","retorno":80.0,"cnpj":"F0001284401"},{"nome":"Fundo De Investimento Em Direitos Creditórios","score":54.1,"classe":"C","retorno":80.0,"cnpj":"F0000637440"},{"nome":"Basso Fundo De Investimento Em Direitos Credi","score":53.0,"classe":"C","retorno":80.0,"cnpj":"F0000462837"},{"nome":"Loyalty Fundo De Investimento Em Direitos Cre","score":52.7,"classe":"C","retorno":80.0,"cnpj":"F0001179985"},{"nome":"Cse Bank Fundo De Investimento Em Direitos Cr","score":52.5,"classe":"C","retorno":80.0,"cnpj":"F0000777986"},{"nome":"Valorem Fundo De Investimento Em Direitos Cre","score":52.4,"classe":"C","retorno":80.0,"cnpj":"F0000359671"},{"nome":"Multiplike Plus Fundo De Investimento Em Dire","score":52.3,"classe":"C","retorno":80.0,"cnpj":"F0000616206"},{"nome":"Fundo De Investimento Em Direitos Creditórios","score":52.3,"classe":"C","retorno":80.0,"cnpj":"F0000747475"},{"nome":"Fundo De Investimento Em Direitos Creditórios","score":52.0,"classe":"C","retorno":80.0,"cnpj":"F0000621811"},{"nome":"Fundo De Investimento Em Direitos Creditórios","score":51.9,"classe":"C","retorno":80.0,"cnpj":"F0000407607"},{"nome":"U.Nic Fundo De Investimento Em Cotas De Fundo","score":51.8,"classe":"C","retorno":80.0,"cnpj":"F0000552550"},{"nome":"Casper Fundo De Investimento Em Cotas De Fund","score":51.6,"classe":"C","retorno":80.0,"cnpj":"F0001300237"},{"nome":"Sbk Capital Fundo De Investimento Em Direitos","score":51.5,"classe":"C","retorno":80.0,"cnpj":"F0000477885"},{"nome":"Fundo De Investimento Em Direitos Creditórios","score":51.4,"classe":"C","retorno":80.0,"cnpj":"F0001304046"},{"nome":"Via Capital Artemus Fundo De Investimento Em ","score":51.1,"classe":"C","retorno":80.0,"cnpj":"F0000422908"},{"nome":"Opinvest Fundo De Investimento Em Direitos Cr","score":51.1,"classe":"C","retorno":80.0,"cnpj":"F0000772682"},{"nome":"Opinvest Fundo De Investimento Em Direitos Cr","score":51.1,"classe":"C","retorno":80.0,"cnpj":"F0000772682"},{"nome":"Simpala Fundo De Investimento Em Direitos Cre","score":50.7,"classe":"C","retorno":80.0,"cnpj":"F0000706507"},{"nome":"Asa Longo Prazo Ii Fundo De Investimento Em C","score":50.7,"classe":"C","retorno":80.0,"cnpj":"F0000777961"}],"scatter":[{"nome":"Artesanal Consignado Privado Fundo De In","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11211810083.0},{"nome":"Fidc Np Multissetorial Bs Np","score":48.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18409574883.0},{"nome":"Casper Fundo De Investimento Em Cotas De","score":51.6,"volatilidade":1.2330689702323225,"retorno":80.0,"classe":"C","pl":24526253754.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":46.8,"volatilidade":3.768724019066326,"retorno":80.0,"classe":"C","pl":2316182094.0},{"nome":"Larca Consignado Ii Fundo De Investiment","score":47.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":6587135051.0},{"nome":"Flores Do Brasil Fundo De Investimento E","score":47.8,"volatilidade":0.0005152789958891442,"retorno":80.0,"classe":"C","pl":2300472389.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":23862372895.0},{"nome":"Firma Fundo De Investimento Em Direitos ","score":48.4,"volatilidade":100,"retorno":80.0,"classe":"C","pl":2190708114.0},{"nome":"Multiplik Fundo De Investimento Em Direi","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12861489930.0},{"nome":"Regensburg Fundo De Investimento Em Cota","score":48.9,"volatilidade":100,"retorno":0.0,"classe":"C","pl":7258077560.0},{"nome":"Ventura Fundo De Investimento Em Direito","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13040320114.0},{"nome":"Fidc Ativos Judiciais I Responsabilidade","score":46.7,"volatilidade":0.5114437284981277,"retorno":80.0,"classe":"C","pl":10784365865.0},{"nome":"Xp Crédito Estruturado 90 Fundo De Inves","score":46.8,"volatilidade":7.141623140285715,"retorno":80.0,"classe":"C","pl":467310694.0},{"nome":"Potencial Fundo De Investimento Em Direi","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":6902016421.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":49.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14939198438.0},{"nome":"Jc 4870 Fundo De Investimento Em Direito","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1537633989.0},{"nome":"Bigtrade Suno Fundo De Investimento –Res","score":47.3,"volatilidade":3.5423454273811186,"retorno":80.0,"classe":"C","pl":9415761011.0},{"nome":"Opinvest Fundo De Investimento Em Direit","score":51.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1158071834.0},{"nome":"Via Capital Artemus Fundo De Investiment","score":51.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":6272567518.0},{"nome":"Asa Lp Fc Fidc Resp Limitada","score":49.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9446170850.0},{"nome":"Davos Fidc Np - Resp Limitada","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9123345909.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19206320202.0},{"nome":"Aquiraz Fundo De Investimento Em Cotas D","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12229349987.0},{"nome":"Investcamp Fundo De Investimento Em Dire","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18769416832.0},{"nome":"Sbk Capital Fundo De Investimento Em Dir","score":51.5,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11827911906.0},{"nome":"Algarve Precatórios I Fundo De Investime","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4556538546.0},{"nome":"Pine Lift I Cartão Inss Fundo De Investi","score":48.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1476805905.0},{"nome":"Cartão De Compra Supplier Fundo De Inves","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":3689771232.0},{"nome":"Apg Fundo De Investimento Em Direitos Cr","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8690048339.0},{"nome":"Ume I Fundo De Investimento Em Direitos ","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":748374921.0},{"nome":"Meta Fundo De Investimento Em Direitos C","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9092340241.0},{"nome":"Solitude Precatório Fundo De Investiment","score":47.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4210509126.0},{"nome":"Cerealis Fundo De Investimento Em Direit","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":793242413.0},{"nome":"Vivo Pay I Fundo De Investimento Em Dire","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8482934865.0},{"nome":"Atlanta Fundo De Investimento Em Direito","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19483380802.0},{"nome":"Rio Bravo Agro Recebíveis Fundo De Inves","score":47.8,"volatilidade":27.316625665696066,"retorno":80.0,"classe":"C","pl":14067392349.0},{"nome":"Carajás Fundo De Investimento Em Direito","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":20449956383.0},{"nome":"Solis Portfolio Crédito Fundo De Investi","score":46.8,"volatilidade":0.7310716222079391,"retorno":80.0,"classe":"C","pl":11640756583.0},{"nome":"Basso Fundo De Investimento Em Direitos ","score":53.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":723451111.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":46.8,"volatilidade":23.43830365594743,"retorno":80.0,"classe":"C","pl":16416672321.0},{"nome":"Fi Em Direitos Creditórios Opea Agro Ins","score":46.8,"volatilidade":22.780202447153403,"retorno":80.0,"classe":"C","pl":19404628851.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":48.3,"volatilidade":72.84959969698767,"retorno":80.0,"classe":"C","pl":15077775177.0},{"nome":"Leone Fundo De Investimento Em Cotas De ","score":46.9,"volatilidade":0.42411314731264865,"retorno":80.0,"classe":"C","pl":10468423413.0},{"nome":"Acreditar Fundo De Investimento Em Direi","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":16265195717.0},{"nome":"G5 Fundo De Investimento Em Direitos Cre","score":47.6,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12053372143.0},{"nome":"Salis Fundo De Investimento Em Direitos ","score":46.8,"volatilidade":5.09618565284517,"retorno":80.0,"classe":"C","pl":15895915232.0},{"nome":"Ciss Fundo De Investimento Em Direitos C","score":48.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13246207172.0},{"nome":"Ceres Confina Fundo De Investimento Em D","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":22511861402.0},{"nome":"Nobel Fundo De Investimento Em Direitos ","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10991525705.0},{"nome":"Audax Lion Fundo De Investimento Em Dire","score":47.6,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4261959104.0},{"nome":"Appaloosa Fidc","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":2173980815.0},{"nome":"Evolve Fundo De Investimento Em Direitos","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":406890172.0},{"nome":"Celeti Iaas Fundo De Investimento Em Dir","score":47.4,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19553249015.0},{"nome":"Makena Fundo De Investimento Em Direitos","score":48.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":24069396052.0},{"nome":"Aetos Fundo De Investimento Em Direitos ","score":47.5,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14699336293.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":16217399929.0},{"nome":"Interbank Fundo De Investimento Em Direi","score":47.5,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8865258679.0},{"nome":"Pinarello Fundo De Investimento Em Direi","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4111271689.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14858001113.0},{"nome":"Principiapay Educação Fundo De Investime","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1843903508.0},{"nome":"Credit Partners Fidc","score":50.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19556454446.0},{"nome":"Multiplix Multissetorial Fundo De Invest","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":908228259.0},{"nome":"Algarve Amazônia Fundo De Investimento E","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10122455064.0},{"nome":"Artesanal Cdc Fundo De Investimento Em D","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":7030321970.0},{"nome":"Sb Crédito Fundo De Investimento Em Dire","score":48.5,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4773673169.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.4,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18247908552.0},{"nome":"Hércules Fidc Multissetorial","score":49.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1975366927.0},{"nome":"Shr Fundo De Investimento Em Direitos Cr","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":16392596212.0},{"nome":"Fert - Agro Fundo De Investimento Em Cad","score":47.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4221939785.0},{"nome":"Serena Fundo De Investimento Em Direitos","score":46.8,"volatilidade":14.984478244252097,"retorno":80.0,"classe":"C","pl":9983430938.0},{"nome":"Apta Invest Fundo De Investimento Em Dir","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18795572086.0},{"nome":"Ridolfinvest 2 Fundo De Investimento Em ","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19056907267.0},{"nome":"Renovagro Fundo De Investimento Em Direi","score":47.5,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11620035550.0},{"nome":"Fitz Roy Special Situations Ii Fundo De ","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":23442768399.0},{"nome":"Apoge Fundo De Investimento Em Direitos ","score":48.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10891382648.0},{"nome":"Gavea Real Fundo De Investimento Em Dire","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":15466862548.0},{"nome":"Fidc Multisetorial Maximum","score":49.3,"volatilidade":87.88620684162657,"retorno":80.0,"classe":"C","pl":21357839509.0},{"nome":"Fragata Fundo De Investimento Em Direito","score":50.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19879826942.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.0,"volatilidade":4.24372680311666,"retorno":80.0,"classe":"C","pl":12416103338.0},{"nome":"Ironwood Consig Multi I Fundo De Investi","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":15392367001.0},{"nome":"Srm Exodus Pme Fundo De Investimento Em ","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11996105641.0},{"nome":"Fundo De Investimento Em Cotas De Fundos","score":47.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8026165305.0},{"nome":"Cloudwalk Pi Fundo De Investimento Em Di","score":46.8,"volatilidade":4.653183874065253,"retorno":80.0,"classe":"C","pl":14017274937.0},{"nome":"Kreditare Fundo De Investimento Em Direi","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5272914999.0},{"nome":"Monte Sião Fundo De Investimento Em Dire","score":48.9,"volatilidade":56.25455711965559,"retorno":80.0,"classe":"C","pl":20205858853.0},{"nome":"Segue Ártico Fundo De Investimento Em Di","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17923975833.0},{"nome":"Eos Financiamento Fundo De Investimento ","score":46.8,"volatilidade":99.15350866678212,"retorno":80.0,"classe":"C","pl":4764512307.0},{"nome":"Jmp Fundo De Investimento Em Cotas De Fu","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17429958161.0},{"nome":"Opi Multisegmento Fundo De Investimento ","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":509271242.0},{"nome":"Aira Fundo De Investimento Em Direitos C","score":47.5,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10937537028.0},{"nome":"Rnx Fundo De Investimento Em Direitos Cr","score":48.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18598640124.0},{"nome":"Jc Salus Fundo De Investimento Em Direit","score":47.5,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9756728881.0},{"nome":"Avante Fidc Np","score":47.5,"volatilidade":0.5184698835717507,"retorno":80.0,"classe":"C","pl":11791882922.0},{"nome":"Pangu Fundo De Investimento Em Direitos ","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1278350260.0},{"nome":"Sl Fundo De Investimento Em Direitos Cre","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":2117898875.0},{"nome":"Cotribá Fiagro-Direitos Creditórios","score":47.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":23157668380.0},{"nome":"Grancred Sp Fundo De Investimento Em Dir","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1100645082.0},{"nome":"Jp Mm Fundo De Investimento Em Direitos ","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":20966757510.0},{"nome":"Direta Capital Fundo De Investimento Em ","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":21016308624.0},{"nome":"Banfita Fundo De Investimento Em Direito","score":49.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17370155151.0},{"nome":"Multiplike Fundo De Investimento Em Dire","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14725292603.0},{"nome":"B7 Fidc Não Padronizados","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12323347965.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":48.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5144642101.0},{"nome":"Vectis Pro Solutti Créditos Judiciais Fu","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4082061087.0},{"nome":"Tecnomyl Iii Fundo De Investimento Em Di","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5072452358.0},{"nome":"Ms Open Fundo De Investimento Em Direito","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1858173566.0},{"nome":"Artesanal Cp Boleto Fundo De Investiment","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":20937457065.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11366359538.0},{"nome":"Msv3 Fundo De Investimento Em Direitos C","score":46.8,"volatilidade":34.45318243158918,"retorno":80.0,"classe":"C","pl":22039108889.0},{"nome":"Devlet Fundo De Investimento Em Direitos","score":47.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18229977492.0},{"nome":"Four Even Fundo De Investimento Em Direi","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13879363023.0},{"nome":"Xama! Fundo De Invesmento Em Direitos Cr","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14162529133.0},{"nome":"Gavic Fundo De Investimento Em Cotas De ","score":47.1,"volatilidade":60.77817817643398,"retorno":80.0,"classe":"C","pl":6742439328.0},{"nome":"Across Fundo De Investimento Em Cotas De","score":46.8,"volatilidade":27.572512174959076,"retorno":80.0,"classe":"C","pl":8000997223.0},{"nome":"Quarter Precatórios Fundo De Investiment","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13980755099.0},{"nome":"Hawk Fundo De Investimento Em Direitos C","score":47.6,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17150195831.0},{"nome":"Agrojive I Fundo De Investimento Em Dire","score":50.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":364557623.0},{"nome":"Marajó Fundo De Investimento Em Direitos","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9391374205.0},{"nome":"Treviso Fundo De Investimento Em Direito","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":16266491161.0},{"nome":"Fluxasset Fundo De Investimento Em Direi","score":47.6,"volatilidade":100,"retorno":80.0,"classe":"C","pl":21301897158.0},{"nome":"Gávea Sul Fundo De Investimento Em Direi","score":47.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5656187660.0},{"nome":"Zippi Fundo De Investimento Em Direitos ","score":47.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":21391145844.0},{"nome":"Mulvi Fundo De Investimento Em Direitos ","score":49.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19976268118.0},{"nome":"Evolut Fidc Multissetorial","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10417865505.0},{"nome":"Seven Mp Fundo De Investimento Em Direit","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5912159380.0},{"nome":"R&G Fundo De Investimento Em Direitos Cr","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18148631851.0},{"nome":"Versátil Fundo De Investimento Em Direit","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":7940068497.0},{"nome":"Mr Fundo De Investimento Em Direitos Cre","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14208859116.0},{"nome":"Neo 8 Fundo De Investimento Em Direitos ","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17328899940.0},{"nome":"Consignados Ix Fundo De Investimento Em ","score":47.2,"volatilidade":13.185514406860605,"retorno":80.0,"classe":"C","pl":14154821007.0},{"nome":"Capital Forte Fundo De Investimento Em D","score":47.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":15095377729.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1809206395.0},{"nome":"Boak Aberto Fundo De Investimento Em Dir","score":47.2,"volatilidade":0.021577266018010337,"retorno":80.0,"classe":"C","pl":18204340952.0},{"nome":"Goplan Fiagro-Direitos Creditórios Respo","score":48.4,"volatilidade":5.695862757698691,"retorno":80.0,"classe":"C","pl":7864104569.0},{"nome":"Rayo Fundo De Investimento Em Direitos C","score":46.8,"volatilidade":30.5252955351609,"retorno":80.0,"classe":"C","pl":14432031417.0},{"nome":"Case Fundo De Investimento Em Direitos C","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12852536403.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":306301831.0},{"nome":"Gfm Fundo De Investimento Em Direitos Cr","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":7457230378.0},{"nome":"Pagaleve Fundo De Investimento Em Direit","score":47.1,"volatilidade":0.2473792706072402,"retorno":80.0,"classe":"C","pl":9865830905.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12276548902.0},{"nome":"Sifra Plus Fundo Investimento Em Direito","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":22794295763.0},{"nome":"Go.Bank Fundo De Investimento Em Direito","score":47.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19341320235.0},{"nome":"Exa Agcn Usd Fundo De Investimento Em Di","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10165787989.0},{"nome":"Brasfor Fundo De Investimento Em Direito","score":47.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9899326684.0},{"nome":"Cuivré Fundo De Investimento Em Direitos","score":46.8,"volatilidade":8.443965082165208,"retorno":80.0,"classe":"C","pl":15548759894.0},{"nome":"Frade Fundo De Investimento Em Direitos ","score":46.8,"volatilidade":0.027305177084125536,"retorno":80.0,"classe":"C","pl":20093484676.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":48.4,"volatilidade":100,"retorno":80.0,"classe":"C","pl":3140911884.0},{"nome":"Nova Capital Fundo De Investimento Em Di","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10017547461.0},{"nome":"Fgts V Fundo De Investimento Em Direitos","score":47.2,"volatilidade":95.56399568673383,"retorno":80.0,"classe":"C","pl":1513906008.0},{"nome":"Baru Fundo De Investimento Em Direitos C","score":49.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4622406696.0},{"nome":"Cupertino Fidc - Resp Limitada","score":50.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5208422327.0},{"nome":"B8 Fundo De Investimento Em Direitos Cre","score":48.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10021538528.0},{"nome":"30E Fundo De Investimento Em Direitos Cr","score":48.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10927494644.0},{"nome":"Credit Restructuring Fundo De Investimen","score":46.8,"volatilidade":0.009006456847989267,"retorno":80.0,"classe":"C","pl":756435083.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":46.8,"volatilidade":4.234351678606729,"retorno":80.0,"classe":"C","pl":21289497040.0},{"nome":"Wfr Fundo De Investimento Em Direitos Cr","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1663047203.0},{"nome":"Credere Fundo De Investimento Em Direito","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5723922283.0},{"nome":"Ctg Fundo De Investimento Em Direitos Cr","score":49.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13910829478.0},{"nome":"Consignados Viii Fundo De Investimento E","score":47.4,"volatilidade":77.95575962415421,"retorno":80.0,"classe":"C","pl":19032001149.0},{"nome":"Raman Fundo De Investimento Em Direitos ","score":47.4,"volatilidade":84.72010957081376,"retorno":80.0,"classe":"C","pl":3274554891.0},{"nome":"Roquedal Fundo De Investimento Em Direit","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":3672156511.0},{"nome":"Guardian Gdf Fundo De Investimento Em Di","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14571041528.0},{"nome":"Abc Fundo De Investimento Em Direitos Cr","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":21548631728.0},{"nome":"Cobuccio Fundo De Investimento Em Direit","score":47.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18881929866.0},{"nome":"Gothan Fundo De Investimento Em Cotas De","score":47.1,"volatilidade":0.4299140678394218,"retorno":80.0,"classe":"C","pl":14334632605.0},{"nome":"Cse Bank Fundo De Investimento Em Direit","score":52.5,"volatilidade":37.45068888579266,"retorno":80.0,"classe":"C","pl":3416109398.0},{"nome":"Aurum Fundo De Investimento Em Direitos ","score":48.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":22962631588.0},{"nome":"Solus Fundo De Investimento Em Direitos ","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8629904871.0},{"nome":"Grupo Affix Fundo De Investimento Em Dir","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12292990838.0},{"nome":"Artesanal Consignado Privado Fundo De In","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11211810083.0},{"nome":"Byx Mozart Fundo De Investimento Em Dire","score":46.8,"volatilidade":94.02040924915845,"retorno":80.0,"classe":"C","pl":15060149822.0},{"nome":"Phd Fundo De Investimento Em Direitos Cr","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12458439945.0},{"nome":"Quatá Fdc Fgts Fundo De Investimento Em ","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12508126994.0},{"nome":"Maraú Fundo De Investimento Em Direitos ","score":47.3,"volatilidade":10.770570099672721,"retorno":80.0,"classe":"C","pl":15742739181.0},{"nome":"Is Green Solfácil Iii Fundo De Investime","score":48.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9541101746.0},{"nome":"Ntz Empreendimentos Fundo De Investiment","score":46.8,"volatilidade":7.861971178649799,"retorno":80.0,"classe":"C","pl":10401142152.0},{"nome":"Haoc Fundo De Investimento Em Direitos C","score":56.0,"volatilidade":23.37746532732199,"retorno":80.0,"classe":"C","pl":24444233293.0},{"nome":"Xp Credit Opportunities Fundo De Investi","score":46.8,"volatilidade":7.437852005526317,"retorno":80.0,"classe":"C","pl":21787431076.0},{"nome":"Aldebaran Iv Fundo De Investimento Em Di","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12623629087.0},{"nome":"G5 Special F Fundo De Investimento Em Di","score":48.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10408749263.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17944808226.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":48.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11952800845.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.7,"volatilidade":92.38222321201985,"retorno":80.0,"classe":"C","pl":22399671080.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13202678246.0},{"nome":"Qantic Ioniq Fundo De Investimento Em Di","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13620572433.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":46.7,"volatilidade":1.5906505276125216,"retorno":80.0,"classe":"C","pl":3803688023.0},{"nome":"Upl 1 Fundo De Investimento Em Direitos ","score":46.9,"volatilidade":44.05046291218543,"retorno":80.0,"classe":"C","pl":6752853578.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.4,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9056459076.0},{"nome":"Larca Aurora Fundo De Investimento Em Di","score":48.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1148512369.0},{"nome":"Advantage Credit Fundo De Investimento E","score":47.1,"volatilidade":0.15346640561500313,"retorno":80.0,"classe":"C","pl":22823822206.0},{"nome":"Tecnomotor Fundo De Investimento Em Dire","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1623591740.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":57.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8158718182.0},{"nome":"Valortec Fundo De Investimentos Em Direi","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12612523666.0},{"nome":"Santa Fé Fundo De Investimento Em Direit","score":47.6,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9009004356.0},{"nome":"Pine Inss Fundo De Investimento Em Direi","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17071500721.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":52.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12288458940.0},{"nome":"Amadeus Fidc","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1034211577.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":2792275277.0},{"nome":"Aldebaran Ii Fundo De Investimento Em Di","score":47.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10953601734.0},{"nome":"Fidc Np Exodus Institucional","score":47.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":23174526458.0},{"nome":"Uda Fundo De Investimento Em Direitos Cr","score":50.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9626780132.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.8,"volatilidade":1.660746492664109,"retorno":80.0,"classe":"C","pl":5484555084.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5694824920.0},{"nome":"Prinz Discovery Master Fundo De Investim","score":46.8,"volatilidade":0.009751415574732959,"retorno":80.0,"classe":"C","pl":5288205562.0},{"nome":"Everest Fundo De Investimento Em Direito","score":49.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":23596187741.0},{"nome":"Oriz Jus Ii Fundo De Investimento Em Dir","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4392132295.0},{"nome":"Classe De Investimento Em Direitos Credi","score":46.8,"volatilidade":27.652162654164393,"retorno":80.0,"classe":"C","pl":16605632123.0},{"nome":"Conlife Fundo De Investimento Em Direito","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13322504671.0},{"nome":"Emunah Fundo De Investimento Em Direitos","score":48.5,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14819493057.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":48.5,"volatilidade":11.015739546176798,"retorno":80.0,"classe":"C","pl":13461612982.0},{"nome":"W Capital Ii – Fundo De  Investimento Em","score":47.2,"volatilidade":68.08650524716005,"retorno":80.0,"classe":"C","pl":2064691621.0},{"nome":"Floresta Fundo De Investimento Em Cotas ","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":20127627411.0},{"nome":"Topcred Fundo De Investimento Em Direito","score":48.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1647554923.0},{"nome":"Gp – Fundo De Investimento Em Direitos C","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17141200922.0},{"nome":"Galleria Fundo De Investimento Em Direit","score":47.0,"volatilidade":49.20927976161891,"retorno":80.0,"classe":"C","pl":14967267735.0},{"nome":"Multi Recebíveis Ii Fundo De Investiment","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8396033780.0},{"nome":"Fidc Não Padronizados Sifra Performance","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":20973399345.0},{"nome":"Dip Financing 11 Fundo De Investimento E","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":3715917962.0},{"nome":"Vale 40 Fcfidc","score":48.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":1133121642.0},{"nome":"Jivemauá Bossanova Crédito Securitizado ","score":47.7,"volatilidade":7.181211688031483,"retorno":80.0,"classe":"C","pl":19039892201.0},{"nome":"Classe Única – Responsabilidade Limitada","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":7931305904.0},{"nome":"Unique Fundo De Investimento Em Direitos","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9174946971.0},{"nome":"Access Fidc Aberto Multissetorial","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14939772767.0},{"nome":"Marília Fundo De Investimento Em Direito","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":3617253815.0},{"nome":"Culttivo Crédito Agrícola Fiagro – Direi","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13099643658.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":48.6,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8211724992.0},{"nome":"Moka Pay Fundo De Investimento Em Direit","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":20107551869.0},{"nome":"Classe A Do Angá Fgts +Ag Fundo De Inves","score":47.9,"volatilidade":7.145279045096411,"retorno":80.0,"classe":"C","pl":10127915766.0},{"nome":"Visão Multimercado Fidc","score":46.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":4373067308.0},{"nome":"Cupertino Kaya Precatórios Fundo De Inve","score":47.6,"volatilidade":15.259048156054112,"retorno":80.0,"classe":"C","pl":846003677.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":51.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":20249194874.0},{"nome":"Proa Fundo De Investimento Em Direitos C","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":2241579037.0},{"nome":"Copper Capital Fundo De Investimento Emd","score":46.9,"volatilidade":87.12259045067462,"retorno":80.0,"classe":"C","pl":19953149264.0},{"nome":"Er 2030 Fundo De Investimento Em Direito","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":16080871568.0},{"nome":"Lgx Fundo De Investimento Em Direitos Cr","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":3651663362.0},{"nome":"Primo Capital Ii Fundo De Investimento E","score":49.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13607732988.0},{"nome":"Quartzo Alpha Fidc Np","score":47.1,"volatilidade":0.9655203316873274,"retorno":80.0,"classe":"C","pl":20544541020.0},{"nome":"Settore Crédito Privado Fundo De Investi","score":49.5,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9602056421.0},{"nome":"Versátil Fundo De Investimento Em Direit","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":7940068497.0},{"nome":"Usecorp Catálise Fundo De Investimento E","score":47.6,"volatilidade":95.51390342837044,"retorno":80.0,"classe":"C","pl":8860661114.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18995168059.0},{"nome":"Up.P Iii Fundo De Investimento Em Direit","score":47.9,"volatilidade":75.95729756049965,"retorno":80.0,"classe":"C","pl":15830521637.0},{"nome":"Cromo Fundo De Investimento Em Direitos ","score":46.8,"volatilidade":6.903858652306752,"retorno":80.0,"classe":"C","pl":14360900658.0},{"nome":"Guardian Consignado Federal Fundo De Inv","score":47.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5044859513.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.9,"volatilidade":0.0032602032390011693,"retorno":80.0,"classe":"C","pl":20928263631.0},{"nome":"Xp Kamino Fundo De Investimento Em Cotas","score":46.8,"volatilidade":6.827980794891048,"retorno":80.0,"classe":"C","pl":4805398873.0},{"nome":"Bristol Fundo De Investimento Em Direito","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11568324687.0},{"nome":"Sigma Credit Fundo De Investimento Em Di","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":15431477529.0},{"nome":"Fattor Fundo De Investimento Em Direitos","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":16111132850.0},{"nome":"Dbs Fundo De Investimento Em Direitos Cr","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":22109814079.0},{"nome":"Aticca Fundo De Investimento Em Direitos","score":47.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17330343753.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9921358240.0},{"nome":"Investcon Fundo De Investimento Em Direi","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8184435480.0},{"nome":"Galleria Home Equity Fidc","score":48.6,"volatilidade":100,"retorno":80.0,"classe":"C","pl":18021813314.0},{"nome":"Mercantil Np Fundo De Investimento Em Di","score":47.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":15684614721.0},{"nome":"Augme Lvg Fundo De Investimento Em Direi","score":47.2,"volatilidade":27.85223977301839,"retorno":80.0,"classe":"C","pl":1574683740.0},{"nome":"Leve Fundo De Investimento Em Direitos C","score":47.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":16377894783.0},{"nome":"Mt Consignado Privado Ii Fundo De Invest","score":48.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19809583473.0},{"nome":"Asset Bank Ii Fundo De Investimento Em D","score":48.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":2516404532.0},{"nome":"Audax Capital Fundo De Investimento Em D","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":8426640062.0},{"nome":"Pernambucanas Fundo De Investimento Em D","score":47.2,"volatilidade":19.705910336662523,"retorno":80.0,"classe":"C","pl":3129641156.0},{"nome":"Lba Fundo De Investimento Em Direitos Cr","score":47.6,"volatilidade":100,"retorno":80.0,"classe":"C","pl":15073888254.0},{"nome":"Seven Crédito Estruturado 360 Fundo De I","score":46.8,"volatilidade":0.006858583825176137,"retorno":80.0,"classe":"C","pl":12268221543.0},{"nome":"Credvale Fundo De Investimento Em Direit","score":48.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11223337071.0},{"nome":"Fidc Não Padronizados Sifra Performance","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":20973399345.0},{"nome":"Somacred K Master Fundo De Investimento ","score":48.0,"volatilidade":7.7705866239711865,"retorno":80.0,"classe":"C","pl":18160828481.0},{"nome":"Capitania Yield 120 Fundo De Investiment","score":46.8,"volatilidade":0.008923069346729567,"retorno":80.0,"classe":"C","pl":16301108698.0},{"nome":"St 1015.A Fundo De Investimento Em Direi","score":47.3,"volatilidade":2.6744834222154763,"retorno":80.0,"classe":"C","pl":17265663868.0},{"nome":"Artesanal Cp Boleto Fundo De Investiment","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":20937457065.0},{"nome":"Mp Fidc","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":6057591133.0},{"nome":"Ntz Emporium Fundo De Investimento Em Di","score":46.8,"volatilidade":85.07756619124285,"retorno":80.0,"classe":"C","pl":23049460438.0},{"nome":"Law Fundo De Investimento Em Direitos Cr","score":47.6,"volatilidade":100,"retorno":80.0,"classe":"C","pl":13537662294.0},{"nome":"Tração Financeira Fundo De Investimento ","score":47.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":165709326.0},{"nome":"Netmoney Fundo De Investimento Em Direit","score":50.1,"volatilidade":100,"retorno":80.0,"classe":"C","pl":17132416086.0},{"nome":"Gii Gestão Inteligente Fidc","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":7432028563.0},{"nome":"Vixtra Fundo De Investimento Em Direitos","score":48.0,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5075658766.0},{"nome":"Serigy Fundo De Investimento Em Direitos","score":46.9,"volatilidade":28.6499501967212,"retorno":80.0,"classe":"C","pl":5365713814.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":48.2,"volatilidade":25.051989976675472,"retorno":80.0,"classe":"C","pl":13121272496.0},{"nome":"Fidc Multisetorial Sm Lp","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":12030059389.0},{"nome":"Centro Sul Concessões Fundo De Investime","score":47.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14044747507.0},{"nome":"Alumni Ii Fundo De Investimento Em Direi","score":50.0,"volatilidade":0.42964474190128277,"retorno":80.0,"classe":"C","pl":2115826765.0},{"nome":"Agro Defender Fundo De Investimento Em D","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":3141675187.0},{"nome":"Xp Fundo De Investimento Em Direitos Cre","score":46.8,"volatilidade":6.070961379778088,"retorno":80.0,"classe":"C","pl":10248661828.0},{"nome":"Cashgo Fundo De Investimento Em Direitos","score":47.2,"volatilidade":34.770066289039875,"retorno":80.0,"classe":"C","pl":9565836168.0},{"nome":"Globalcash Fundo De Investimento Em Dire","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":19878884150.0},{"nome":"Dsx Fundo De Investimento Em Direitos Cr","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":22634647778.0},{"nome":"Bluecapital Fundo De Investimento Em Dir","score":47.1,"volatilidade":32.06598145847292,"retorno":80.0,"classe":"C","pl":1913385018.0},{"nome":"Aldebaran Fundo De Investimento Em Direi","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":10147009452.0},{"nome":"Gavea Open Fundo De Investimento Em Dire","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":22004184874.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":46.9,"volatilidade":3.633904206594495,"retorno":80.0,"classe":"C","pl":9918987045.0},{"nome":"Fundo De Investimento Em Direitos Credit","score":47.9,"volatilidade":100,"retorno":80.0,"classe":"C","pl":9711967627.0},{"nome":"Quattuor Fundo De Investimento Em Direit","score":47.3,"volatilidade":100,"retorno":80.0,"classe":"C","pl":2263610425.0},{"nome":"Asa Longo Prazo Ii Fundo De Investimento","score":50.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":25128782761.0},{"nome":"Larca Consignado Fundo De Investimento E","score":47.9,"volatilidade":24.49908888636432,"retorno":80.0,"classe":"C","pl":746971484.0},{"nome":"Avanti Fundo De Investimento Em Direitos","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":5009467745.0},{"nome":"Capital Finanças Fundo De Investimento E","score":47.2,"volatilidade":100,"retorno":80.0,"classe":"C","pl":11897467671.0},{"nome":"Spark Fundo De Investimento Em Direitos ","score":46.7,"volatilidade":100,"retorno":80.0,"classe":"C","pl":14454076417.0},{"nome":"Jpi Fundo De Investimento Em Direitos Cr","score":46.8,"volatilidade":100,"retorno":80.0,"classe":"C","pl":6371599730.0},{"nome":"Bnvt Origem Fundo De Investimento Em Dir","score":47.2,"volatilidade":33.79626812508492,"retorno":80.0,"classe":"C","pl":20566504930.0},{"nome":"Meg Fundo De Investimento Em Cotas De Fu","score":47.1,"volatilidade":72.35643448462245,"retorno":80.0,"classe":"C","pl":6830755030.0}],"pme":{"Varejo":[{"rank":1,"nome":"Fundo De Investimento Em Direitos Creditórios Da I","score":57.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Da Indústria E (Score: 57, Classe C). Retorno esperado: 80.0% a.a. Indicado para Varejo - Antecipac"},{"rank":2,"nome":"Haoc Fundo De Investimento Em Direitos Creditórios","score":56.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Haoc Fundo De Investimento Em Direitos Creditórios (Score: 56, Classe C). Retorno esperado: 80.0% a.a. Indicado para Varejo - Antecipacao de rece"},{"rank":3,"nome":"Fundo De Investimento Em Direitos Creditórios Tram","score":54.1,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Tramontina I (Score: 54, Classe C). Retorno esperado: 80.0% a.a. Indicado para Varejo - Antecipacao"}],"Agronegocio":[{"rank":1,"nome":"Fundo De Investimento Em Direitos Creditórios Da I","score":57.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Da Indústria E (Score: 57, Classe C). Retorno esperado: 80.0% a.a. Indicado para Agronegocio - Capi"},{"rank":2,"nome":"Haoc Fundo De Investimento Em Direitos Creditórios","score":56.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Haoc Fundo De Investimento Em Direitos Creditórios (Score: 56, Classe C). Retorno esperado: 80.0% a.a. Indicado para Agronegocio - Capital de gir"},{"rank":3,"nome":"Fundo De Investimento Em Direitos Creditórios Tram","score":54.1,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Tramontina I (Score: 54, Classe C). Retorno esperado: 80.0% a.a. Indicado para Agronegocio - Capita"}],"Servicos":[{"rank":1,"nome":"Fundo De Investimento Em Direitos Creditórios Da I","score":57.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Da Indústria E (Score: 57, Classe C). Retorno esperado: 80.0% a.a. Indicado para Servicos - Capital"},{"rank":2,"nome":"Haoc Fundo De Investimento Em Direitos Creditórios","score":56.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Haoc Fundo De Investimento Em Direitos Creditórios (Score: 56, Classe C). Retorno esperado: 80.0% a.a. Indicado para Servicos - Capital de giro o"},{"rank":3,"nome":"Fundo De Investimento Em Direitos Creditórios Tram","score":54.1,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Tramontina I (Score: 54, Classe C). Retorno esperado: 80.0% a.a. Indicado para Servicos - Capital d"}],"Industria":[{"rank":1,"nome":"Fundo De Investimento Em Direitos Creditórios Da I","score":57.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Da Indústria E (Score: 57, Classe C). Retorno esperado: 80.0% a.a. Indicado para Industria - Financ"},{"rank":2,"nome":"Haoc Fundo De Investimento Em Direitos Creditórios","score":56.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Haoc Fundo De Investimento Em Direitos Creditórios (Score: 56, Classe C). Retorno esperado: 80.0% a.a. Indicado para Industria - Financiamento de"},{"rank":3,"nome":"Fundo De Investimento Em Direitos Creditórios Tram","score":54.1,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Tramontina I (Score: 54, Classe C). Retorno esperado: 80.0% a.a. Indicado para Industria - Financia"}],"Tecnologia":[{"rank":1,"nome":"Fundo De Investimento Em Direitos Creditórios Da I","score":57.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Da Indústria E (Score: 57, Classe C). Retorno esperado: 80.0% a.a. Indicado para Tecnologia - Expan"},{"rank":2,"nome":"Haoc Fundo De Investimento Em Direitos Creditórios","score":56.0,"classe":"C","retorno":80.0,"justificativa":"FIDC Haoc Fundo De Investimento Em Direitos Creditórios (Score: 56, Classe C). Retorno esperado: 80.0% a.a. Indicado para Tecnologia - Expansao e cres"},{"rank":3,"nome":"Fundo De Investimento Em Direitos Creditórios Tram","score":54.1,"classe":"C","retorno":80.0,"justificativa":"FIDC Fundo De Investimento Em Direitos Creditórios Tramontina I (Score: 54, Classe C). Retorno esperado: 80.0% a.a. Indicado para Tecnologia - Expansa"}]}};
-
-// ── UTILS ──────────────────────────────────────────────────────
-function classColor(c) {
-  return {A:'#2ECC71',B:'#F39C12',C:'#E67E22',D:'#E74C3C'}[c] || '#6b7280';
-}
-function classBg(c) {
-  return {A:'badge-A',B:'badge-B',C:'badge-C',D:'badge-D'}[c] || 'badge-C';
-}
-function showPage(id, btn) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
-  btn.classList.add('active');
-}
-
-// ── KPIs ──────────────────────────────────────────────────────
-document.getElementById('kpi-total').textContent = DATA.stats.total_fidcs.toLocaleString('pt-BR');
-document.getElementById('kpi-best').textContent = DATA.top20[0].score.toFixed(1);
-document.getElementById('kpi-best-name').textContent = DATA.top20[0].nome.substring(0,30) + '...';
-document.getElementById('kpi-avg').textContent = DATA.stats.score_medio.toFixed(1);
-document.getElementById('kpi-selic').textContent = DATA.macro.selic.toFixed(1) + '%';
-document.getElementById('footer-date').textContent = DATA.macro.data_ref;
-
-// ── MACRO ──────────────────────────────────────────────────────
-document.getElementById('m-selic').textContent = DATA.macro.selic.toFixed(1) + '%';
-document.getElementById('m-ipca').textContent = DATA.macro.ipca.toFixed(2) + '%';
-document.getElementById('m-cdi').textContent = DATA.macro.cdi.toFixed(2) + '%';
-document.getElementById('m-selic-proj').textContent = DATA.macro.selic_proj.toFixed(1) + '%';
-document.getElementById('cenario-desc').textContent =
-  'Cenário atual: ' + DATA.macro.cenario.replace(/_/g,' ').toUpperCase() + '. ' + DATA.macro.descricao +
-  ' A SELIC a ' + DATA.macro.selic + '% a.a. e CDI a ' + DATA.macro.cdi + '% a.a. tornam os FIDCs pós-fixados especialmente atrativos para PMEs que buscam liquidez com retorno acima da inflação (' + DATA.macro.ipca + '%).';
-
-// ── CHART: RANKING BARRAS ──────────────────────────────────────
-const top10 = DATA.top20.slice(0,10);
-new Chart(document.getElementById('chart-ranking'), {
-  type: 'bar',
-  data: {
-    labels: top10.map(r => r.nome.length > 35 ? r.nome.substring(0,35)+'…' : r.nome),
-    datasets: [{
-      label: 'Score Final',
-      data: top10.map(r => r.score),
-      backgroundColor: top10.map(r => classColor(r.classe) + 'cc'),
-      borderColor: top10.map(r => classColor(r.classe)),
-      borderWidth: 2,
-      borderRadius: 6,
-    }]
-  },
-  options: {
-    indexAxis: 'y',
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: ctx => ` Score: ${ctx.raw.toFixed(1)} | Retorno est: ${top10[ctx.dataIndex].retorno.toFixed(1)}%`
-        }
-      }
-    },
-    scales: {
-      x: { min: 0, max: 100, grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 } } },
-      y: { ticks: { font: { size: 11 } } }
-    }
-  }
-});
-
-// ── TABLE RANKING ──────────────────────────────────────────────
-const tbody = document.getElementById('tbody-ranking');
-DATA.top20.forEach((r, i) => {
-  const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other';
-  tbody.innerHTML += `<tr>
-    <td><span class="rank-badge ${rankClass}">${i+1}</span></td>
-    <td style="font-weight:500">${r.nome}</td>
-    <td><strong>${r.score.toFixed(1)}</strong></td>
-    <td><span class="badge ${classBg(r.classe)}">${r.classe}</span></td>
-    <td>${r.retorno.toFixed(1)}%</td>
-  </tr>`;
-});
-
-// ── CHART: DONUT ──────────────────────────────────────────────
-const classEntries = Object.entries(DATA.stats.classes);
-new Chart(document.getElementById('chart-donut'), {
-  type: 'doughnut',
-  data: {
-    labels: classEntries.map(([k]) => 'Classe ' + k),
-    datasets: [{
-      data: classEntries.map(([,v]) => v),
-      backgroundColor: classEntries.map(([k]) => classColor(k)),
-      borderWidth: 3, borderColor: '#fff'
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } },
-      tooltip: {
-        callbacks: {
-          label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString('pt-BR')} FIDCs (${(ctx.raw/DATA.stats.total_fidcs*100).toFixed(1)}%)`
-        }
-      }
-    },
-    cutout: '65%'
-  }
-});
-
-// ── CHART: RADAR (componentes top5) ───────────────────────────
-// Use top 5 from scatter data
-const top5scatter = DATA.scatter.slice(0,5);
-new Chart(document.getElementById('chart-radar'), {
-  type: 'radar',
-  data: {
-    labels: ['Retorno','Risco','Liquidez','Macro','Score Final'],
-    datasets: top5scatter.map((r, i) => ({
-      label: r.nome.substring(0,25)+'…',
-      data: [r.score, 100-Math.min(r.volatilidade*2,100), r.retorno, 80, r.score],
-      borderColor: ['#3D5A40','#5a7a5e','#E67E22','#3b82f6','#8b5cf6'][i],
-      backgroundColor: ['#3D5A40','#5a7a5e','#E67E22','#3b82f6','#8b5cf6'][i]+'22',
-      pointRadius: 4, borderWidth: 2,
-    }))
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    scales: { r: { min: 0, max: 100, ticks: { font: { size: 9 } }, pointLabels: { font: { size: 11 } } } },
-    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 8 } } }
-  }
-});
-
-// ── CHART: SCATTER ────────────────────────────────────────────
-new Chart(document.getElementById('chart-scatter'), {
-  type: 'scatter',
-  data: {
-    datasets: [{
-      label: 'FIDCs',
-      data: DATA.scatter.map(r => ({ x: r.retorno, y: r.score, nome: r.nome, classe: r.classe })),
-      backgroundColor: DATA.scatter.map(r => classColor(r.classe) + '99'),
-      pointRadius: 5, pointHoverRadius: 8,
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: ctx => `${ctx.raw.nome} | Score: ${ctx.raw.y.toFixed(1)} | Retorno: ${ctx.raw.x.toFixed(1)}% | Classe ${ctx.raw.classe}`
-        }
-      }
-    },
-    scales: {
-      x: { title: { display: true, text: 'Retorno Esperado 12m (%)' }, grid: { color: '#f0f0f0' } },
-      y: { title: { display: true, text: 'Score Final' }, min: 0, max: 100, grid: { color: '#f0f0f0' } }
-    }
-  }
-});
-
-// ── CHART: MACRO BAR ──────────────────────────────────────────
-new Chart(document.getElementById('chart-macro-bar'), {
-  type: 'bar',
-  data: {
-    labels: ['SELIC', 'CDI', 'IPCA 12m', 'SELIC Proj. 12m', 'IPCA Proj. 12m'],
-    datasets: [{
-      label: 'Valor (%)',
-      data: [DATA.macro.selic, DATA.macro.cdi, DATA.macro.ipca, DATA.macro.selic_proj, DATA.macro.ipca_proj],
-      backgroundColor: ['#3D5A40cc','#5a7a5ecc','#E67E22cc','#3b82f6cc','#f59e0bcc'],
-      borderColor: ['#3D5A40','#5a7a5e','#E67E22','#3b82f6','#f59e0b'],
-      borderWidth: 2, borderRadius: 8,
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toFixed(2)}%` } } },
-    scales: { y: { ticks: { callback: v => v + '%' }, grid: { color: '#f0f0f0' } } }
-  }
-});
-
-// ── PME FILTER & CARDS ────────────────────────────────────────
-const segmentos = Object.keys(DATA.pme);
-let activeSeg = segmentos[0];
-const filterDiv = document.getElementById('seg-filter');
-segmentos.forEach(seg => {
-  const btn = document.createElement('button');
-  btn.className = 'seg-btn' + (seg === activeSeg ? ' active' : '');
-  btn.textContent = seg;
-  btn.onclick = () => {
-    activeSeg = seg;
-    document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderPME(seg);
-  };
-  filterDiv.appendChild(btn);
-});
-
-let pmeChart = null;
-function renderPME(seg) {
-  const cards = DATA.pme[seg];
-  const container = document.getElementById('pme-cards');
-  container.innerHTML = '';
-  cards.forEach(c => {
-    container.innerHTML += `
-      <div class="pme-card">
-        <div class="pme-rank">Recomendação #${c.rank}</div>
-        <div class="pme-nome">${c.nome}</div>
-        <div class="pme-meta">
-          <div class="pme-score">${c.score.toFixed(1)}</div>
-          <span class="badge ${classBg(c.classe)}">${c.classe}</span>
-          <span style="font-size:0.82rem;color:#6b7280">${c.retorno.toFixed(1)}% a.a.</span>
-        </div>
-        <div class="pme-just">${c.justificativa}</div>
-      </div>`;
-  });
-
-  // Update bar chart
-  if (pmeChart) pmeChart.destroy();
-  pmeChart = new Chart(document.getElementById('chart-pme-bar'), {
-    type: 'bar',
-    data: {
-      labels: cards.map(c => '#' + c.rank + ' ' + c.nome.substring(0,30) + '…'),
-      datasets: [{
-        label: 'Score Final',
-        data: cards.map(c => c.score),
-        backgroundColor: ['#3D5A40cc','#5a7a5ecc','#7a9e7ecc'],
-        borderColor: ['#3D5A40','#5a7a5e','#7a9e7e'],
-        borderWidth: 2, borderRadius: 8,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { min: 0, max: 100, grid: { color: '#f0f0f0' } } }
-    }
-  });
-}
-renderPME(activeSeg);
-</script>
 </body>
 </html>

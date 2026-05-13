@@ -1,0 +1,145 @@
+/* ─────────────────────────────────────────────────────────────────
+ * Layout — header, nav, main, footer, grids reutilizáveis.
+ * ───────────────────────────────────────────────────────────────── */
+
+/* HEADER */
+header {
+  background: linear-gradient(135deg, var(--green-950) 0%, var(--green-900) 60%, var(--green-800) 100%);
+  color: var(--white);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  box-shadow: var(--shadow-md);
+}
+.header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--s-6) var(--s-8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-6);
+}
+.logo { display: flex; align-items: center; gap: var(--s-4); }
+.logo-mark {
+  width: 56px; height: 56px;
+  border-radius: var(--r-md);
+  background: var(--white);
+  padding: 6px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 6px 16px rgba(0,0,0,0.25);
+}
+.logo-mark img { width: 100%; height: 100%; object-fit: contain; }
+.logo-text h1 {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.logo-text p {
+  font-size: var(--fs-sm);
+  opacity: 0.78;
+  margin-top: var(--s-1);
+  font-weight: 400;
+}
+.header-badge {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: var(--r-md);
+  padding: var(--s-2) var(--s-4);
+  font-size: var(--fs-xs);
+  text-align: right;
+  line-height: 1.5;
+  backdrop-filter: blur(8px);
+}
+.header-badge strong {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+/* NAV */
+nav {
+  background: var(--green-950);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.nav-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--s-8);
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+}
+.nav-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.62);
+  padding: var(--s-4) var(--s-5);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--t-fast), border-color var(--t-fast);
+  white-space: nowrap;
+}
+.nav-btn:hover { color: var(--white); }
+.nav-btn.active {
+  color: var(--white);
+  border-bottom-color: var(--green-400);
+}
+
+/* MAIN — toma espaço disponível para empurrar footer pro fim. */
+main {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--s-8);
+  flex: 1 0 auto;
+}
+/* Páginas: troca instantânea (sem fadeIn) — evita sensação de "carregando". */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Estado temporário usado pelo router ao montar charts em página ainda inativa.
+   Posiciona fora da tela mantendo o layout (Chart.js mede a width corretamente). */
+.page.measuring {
+  display: block;
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  width: calc(100% - var(--s-8) * 2);
+  pointer-events: none;
+}
+
+/* FOOTER — sempre no fim da viewport quando o conteúdo é curto. */
+footer {
+  background: var(--green-950);
+  color: rgba(255,255,255,0.55);
+  text-align: center;
+  padding: var(--s-6);
+  font-size: var(--fs-xs);
+  margin-top: var(--s-12);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+footer strong { color: rgba(255,255,255,0.9); font-weight: 600; }
+
+/* GRIDS */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-6);
+  margin-bottom: var(--s-6);
+}
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* RESPONSIVE */
+@media (max-width: 640px) {
+  .header-inner { padding: var(--s-4); flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+  .nav-inner { padding: 0 var(--s-3); }
+  main { padding: var(--s-4); }
+  .header-badge { width: 100%; text-align: left; }
+}
