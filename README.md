@@ -14,7 +14,7 @@
 
 ### 🚀 [Acessar Dashboard →](https://victorsouza14.github.io/radar-fidc)
 
-*2.489 FIDCs reais · Dados ANBIMA + BCB · Atualizado diariamente*
+*2.489 FIDCs · ANBIMA + BCB + CVM · Atualização diária via GitHub Action*
 
 </div>
 
@@ -25,6 +25,7 @@
 - [Problema e Solução](#-problema-e-solução)
 - [Dashboard](#-dashboard)
 - [Arquitetura](#-arquitetura)
+- [Fluxo de Atualização](#-fluxo-de-atualização)
 - [Estrutura do Repositório](#-estrutura-do-repositório)
 - [Como Executar](#-como-executar)
 - [Fontes de Dados](#-fontes-de-dados)
@@ -35,66 +36,70 @@
 
 ## 💡 Problema e Solução
 
-### O Problema
+PMEs enfrentam dificuldades para acessar crédito com condições favoráveis. Os **FIDCs**
+(Fundos de Investimento em Direitos Creditórios) são uma alternativa, mas existem
+**+2.400 fundos** registrados na ANBIMA, com riscos e retornos muito diferentes.
 
-PMEs (Pequenas e Médias Empresas) enfrentam dificuldades para acessar crédito com condições favoráveis. Os **FIDCs** (Fundos de Investimento em Direitos Creditórios) são uma alternativa viável, mas:
+O **Radar FIDC** automatiza essa análise:
 
-- Existem **+2.400 FIDCs** registrados na ANBIMA — escolher é complexo
-- Cada fundo tem risco, retorno e perfil diferentes
-- PMEs não têm assessoria financeira especializada
-
-### A Solução
-
-O **Radar FIDC** automatiza a análise de todos os FIDCs disponíveis e recomenda os mais adequados para cada perfil de PME, considerando:
-
-- Histórico de retorno e volatilidade
-- Cenário macroeconômico atual (SELIC, IPCA, CDI)
-- Compatibilidade com o segmento e necessidade da PME
+- Calcula um **score 0–100** por FIDC com base em retorno, risco, cenário macro e liquidez.
+- Casa o **perfil da PME** (segmento, necessidade, tolerância a risco) com os FIDCs mais aderentes.
+- Atualiza diariamente conforme novos dados ANBIMA/BCB/CVM chegam.
 
 ---
 
 ## 📊 Dashboard
 
-Acesse o dashboard interativo em: **https://victorsouza14.github.io/radar-fidc**
+Acesse: **https://victorsouza14.github.io/radar-fidc**
 
 | Página | O que mostra |
-|--------|-------------|
+|--------|--------------|
 | **Visão Geral** | KPIs + Top 10 FIDCs por score + tabela de ranking |
-| **Score & Risco** | Scatter plot retorno × risco + distribuição por classe |
-| **Cenário Macro** | SELIC 15%, IPCA 3,15%, CDI 14,65% + análise de impacto |
-| **Recomendação PME** | Filtro por segmento → top-3 FIDCs recomendados |
+| **Score & Risco** | Distribuição por classe + scatter retorno × score |
+| **Cenário Macro** | SELIC, IPCA, CDI + análise de impacto |
+| **Recomendação PME** | Top-3 FIDCs por segmento com matching por aderência |
 
-> Para conectar ao Power BI, veja: [docs/powerbi_setup.md](docs/powerbi_setup.md)
+> Conexão Power BI: [docs/powerbi_setup.md](docs/powerbi_setup.md)
 
 ---
 
 ## 🏗 Arquitetura
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  FONTES: ANBIMA API · BCB/Focus · CVM                        │
-└─────────────────────┬────────────────────────────────────────┘
-                      │
-                      ▼
-┌──────────────────────────────────────────────────────────────┐
-│  AZURE DATA FACTORY — pipeline diária (6h UTC)               │
-└─────────────────────┬────────────────────────────────────────┘
-                      │
-                      ▼
-┌──────────────────────────────────────────────────────────────┐
-│  AZURE DATA LAKE STORAGE Gen2 (stdatatalake2026)             │
-│                                                              │
-│  🥉 Bronze → 🥈 Silver → 🥇 Gold                            │
-│   CSV bruto   Parquet limpo  Parquet analítico + CSV         │
-└─────────────────────┬────────────────────────────────────────┘
-                      │ Databricks (Spark)
-                      ▼
-┌──────────────────────────────────────────────────────────────┐
-│  DASHBOARD HTML (GitHub Pages) · Power BI Desktop            │
-└──────────────────────────────────────────────────────────────┘
+ANBIMA · BCB · CVM
+        ↓
+Azure Data Factory (cron 6h UTC)
+        ↓
+ADLS Gen2 — Bronze (CSV) → Silver (Parquet) → Gold (Parquet + CSV)
+        ↓                                         ↓
+   Databricks                            gold/powerbi/*.csv
+   notebooks Spark                              ↓
+                                ┌────────────────┴────────────────┐
+                                ↓                                 ↓
+                    GitHub Action (cron 9h UTC)          Power BI Desktop
+                    gera data.json e commita
+                                ↓
+                       GitHub Pages serve
+                       dashboard atualizado
 ```
 
-> Diagrama detalhado: [docs/arquitetura.md](docs/arquitetura.md)
+Detalhe: [docs/arquitetura.md](docs/arquitetura.md)
+
+---
+
+## 🔄 Fluxo de Atualização
+
+O dashboard é **estático no GitHub Pages**, mas atualizado automaticamente:
+
+1. **6h UTC** — Azure Data Factory dispara a pipeline Databricks.
+2. Notebooks Bronze → Silver → Gold geram parquets e CSVs em `stdatatalake2026/gold/powerbi/`.
+3. **9h UTC** — `.github/workflows/update-dashboard.yml` (cron) executa
+   `scripts/generate_dashboard_data.py`, que lê os CSVs do ADLS, gera o `data.json` e
+   commita no repositório se houve mudança.
+4. GitHub Pages publica a nova versão automaticamente.
+
+Para que o GitHub Action funcione, configure o secret `AZURE_CONNECTION_STRING` em
+**Settings → Secrets and variables → Actions**.
 
 ---
 
@@ -102,35 +107,44 @@ Acesse o dashboard interativo em: **https://victorsouza14.github.io/radar-fidc**
 
 ```
 radar-fidc/
+├── index.html                          # Dashboard (carrega data.json via fetch)
+├── data.json                           # Dados atuais — gerado pelo pipeline
+├── .env.example                        # Template de variáveis de ambiente
+├── requirements.txt                    # Dependências Python
 │
-├── 📄 index.html                    # Dashboard interativo (GitHub Pages)
-├── 📄 .env.example                  # Variáveis de ambiente necessárias
-├── 📄 requirements.txt              # Dependências Python
+├── .github/workflows/
+│   └── update-dashboard.yml            # GitHub Action de atualização diária
 │
-├── 📁 notebooks/                    # Pipeline de dados completa
-│   ├── 📁 01_bronze_ingestao/       # Ingestão das fontes de dados
-│   │   ├── etl_anbima.py            #   → ANBIMA API → ADLS Bronze
-│   │   ├── etl_bcb.py               #   → BCB/Focus → ADLS Bronze
-│   │   └── etl_cda.py               #   → CVM CDA → ADLS Bronze
+├── scripts/
+│   └── generate_dashboard_data.py      # ADLS Gold CSV → data.json
+│
+├── notebooks/
+│   ├── _common.py                      # Helper compartilhado (secrets)
 │   │
-│   ├── 📁 02_silver_tratamento/     # Limpeza e padronização
-│   │   ├── etl_anbima.py            #   → Bronze → Silver (Parquet tipado)
-│   │   ├── etl_macro.py             #   → Bronze → Silver (SELIC, IPCA, CDI)
-│   │   └── etl_cda.py               #   → Bronze → Silver (carteira)
+│   ├── 01_bronze_ingestao/             # Ingestão das fontes
+│   │   ├── etl_anbima.py               #   ANBIMA API → ADLS Bronze
+│   │   ├── etl_bcb.py                  #   BCB/SGS → ADLS Bronze
+│   │   └── etl_cda.py                  #   CVM CDA → ADLS Bronze
 │   │
-│   └── 📁 03_gold_modelagem/        # Modelo de score e recomendações
-│       ├── 01_score_fidc.py         #   → Score ponderado por FIDC (0-100)
-│       ├── 02_indicadores_macro.py  #   → Contexto macro atual
-│       ├── 03_recomendacao_pme.py   #   → Matching PME × FIDC
-│       ├── 04_dashboard_master.py   #   → Tabela consolidada Power BI
-│       ├── 05_export_csv.py         #   → Export CSV para dashboard
-│       └── orquestrador_gold.py     #   → Orquestra notebooks 01-05
+│   ├── 02_silver_tratamento/           # Limpeza e padronização
+│   │   ├── etl_anbima.py
+│   │   ├── etl_macro.py
+│   │   └── etl_cda.py
+│   │
+│   └── 03_gold_modelagem/              # Modelagem analítica
+│       ├── 00_schema_report.py         #   Validação de schemas Silver
+│       ├── 01_score_fidc.py            #   Score por FIDC (percentil)
+│       ├── 02_indicadores_macro.py     #   Indicadores macro consolidados
+│       ├── 03_recomendacao_pme.py      #   Matching PME × FIDC por segmento
+│       ├── 04_dashboard_master.py      #   Tabela mestre
+│       ├── 05_export_csv.py            #   Parquet → CSV (Power BI)
+│       └── orquestrador_gold.py        #   Roda 00–05 em sequência
 │
-└── 📁 docs/                         # Documentação técnica
-    ├── arquitetura.md               #   Diagrama completo da pipeline
-    ├── modelo_score.md              #   Como o score é calculado
-    ├── fontes_dados.md              #   ANBIMA, BCB, CVM — schemas
-    └── powerbi_setup.md             #   Guia de conexão Power BI
+└── docs/                               # Documentação técnica
+    ├── arquitetura.md
+    ├── modelo_score.md
+    ├── fontes_dados.md
+    └── powerbi_setup.md
 ```
 
 ---
@@ -140,42 +154,54 @@ radar-fidc/
 ### Pré-requisitos
 
 - Python 3.10+
-- Conta Azure com acesso ao ADLS Gen2
-- Workspace Databricks configurado
-- Credenciais ANBIMA API
+- Acesso ao ADLS Gen2 (`stdatatalake2026`) — connection string
+- Credenciais ANBIMA (Client ID / Secret) — se for rodar a ingestão
+- Workspace Databricks — para executar os notebooks em produção
 
-### 1. Clonar o repositório
+### 1. Clonar e instalar
 
 ```bash
 git clone https://github.com/victorsouza14/radar-fidc.git
 cd radar-fidc
-```
-
-### 2. Configurar variáveis de ambiente
-
-```bash
-cp .env.example .env
-# Edite o .env com suas credenciais
-```
-
-### 3. Instalar dependências
-
-```bash
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Executar a pipeline no Databricks
+### 2. Configurar variáveis
 
 ```bash
-# Fazer upload dos notebooks para o Databricks e executar via API
-# Veja documentação completa em docs/arquitetura.md
+cp .env.example .env
+# Preencher AZURE_CONNECTION_STRING, ANBIMA_CLIENT_ID, ANBIMA_CLIENT_SECRET
+export $(grep -v '^#' .env | xargs)
 ```
 
-### 5. Abrir o dashboard
+### 3. Pipeline completa no Databricks
+
+Faça upload da pasta `notebooks/` para o workspace e execute na ordem:
+
+```
+01_bronze_ingestao/* → 02_silver_tratamento/* → 03_gold_modelagem/orquestrador_gold.py
+```
+
+Os notebooks usam `_common.azure_connection_string()`, que resolve automaticamente
+entre Databricks Secret Scope (`scope=escopo`, `key=AZURECONNSTRING`) e `os.environ`.
+
+### 4. Atualizar o dashboard localmente
+
+```bash
+# Gera data.json a partir da Gold no ADLS
+python scripts/generate_dashboard_data.py --source azure
+
+# Ou a partir de uma pasta local com os CSVs do gold/powerbi
+python scripts/generate_dashboard_data.py --source local --input ./data_local
+```
+
+### 5. Servir o dashboard
 
 ```bash
 # Local
-open index.html
+python -m http.server 8000
+# abre http://localhost:8000
 
 # Online
 # https://victorsouza14.github.io/radar-fidc
@@ -186,35 +212,67 @@ open index.html
 ## 📡 Fontes de Dados
 
 | Fonte | Dados | Documentação |
-|-------|-------|-------------|
+|-------|-------|--------------|
 | **ANBIMA API** | Cadastro e histórico de FIDCs | [docs/fontes_dados.md](docs/fontes_dados.md) |
-| **BCB — API SGS** | SELIC, IPCA, CDI | [docs/fontes_dados.md](docs/fontes_dados.md) |
-| **BCB — Focus** | Projeções de mercado 12m | [docs/fontes_dados.md](docs/fontes_dados.md) |
-| **CVM** | Informe mensal + carteira CDA | [docs/fontes_dados.md](docs/fontes_dados.md) |
+| **BCB — SGS** | SELIC, IPCA, CDI, indicadores macro | [docs/fontes_dados.md](docs/fontes_dados.md) |
+| **CVM CDA** | Composição da carteira mensal | [docs/fontes_dados.md](docs/fontes_dados.md) |
+
+---
+
+## 🔒 LGPD e Limitações conhecidas
+
+### Tratamento de PII
+
+O dataset `data_real/clientes.csv` contém dados de teste/acadêmicos com nomes
+fictícios. Mesmo assim, **todos os campos PII** (CPF, e-mail, telefone, nome
+completo) são **mascarados** antes de chegarem ao `data.json` público:
+
+| Campo | Exemplo no JSON | Helper |
+|---|---|---|
+| CPF | `***.***.***-41` | `mask_cpf` |
+| Nome | `Ana L.` | `mask_name` |
+| E-mail | `c***@****.com` | `mask_email` |
+| Telefone | `(11) ****-8753` | `mask_phone` |
+| Hash de empresa (credit) | `EMP-D510A11A` | `_anon_id` |
+
+Helpers em [`scripts/lib/formatters.py`](scripts/lib/formatters.py).
+
+### Limitações dos modelos
+
+- **Rating FIDC**: clusters K-Means podem oscilar entre runs em datasets muito homogêneos; usar `random_state=42`.
+- **Projeções macro**: `selic_proj` e `ipca_proj` são heurísticas (`selic - 0.5`, `ipca × 0.9`), sinalizadas via `is_proj_heuristica: true`.
+- **Credit model**: snapshot single-cohort, sem variáveis macro nas features.
+- **Match**: ignora segmento de atuação do FIDC; sem bloqueio CVM 555.
+
+Detalhes:
+- [docs/modelo_score.md](docs/modelo_score.md)
+- [docs/credit_model.md](docs/credit_model.md)
+- [docs/match_engine.md](docs/match_engine.md)
 
 ---
 
 ## 🎯 Modelo de Score
 
-Score ponderado de **0 a 100** por FIDC:
+Score ponderado de **0 a 100** por FIDC, com **normalização por percentil**
+(robusto a outliers e produz distribuição realista A/B/C/D):
 
 | Componente | Peso | Descrição |
 |-----------|------|-----------|
-| Retorno histórico | **40%** | Retorno médio normalizado |
-| Risco / Volatilidade | **30%** | Inverso do desvio padrão |
-| Cenário Macroeconômico | **20%** | SELIC, IPCA, projeções Focus |
-| Liquidez | **10%** | Frequência de dados históricos |
+| Retorno histórico | **40%** | Percentil do retorno médio 12m |
+| Risco / Volatilidade | **30%** | Percentil inverso (cap p99) |
+| Cenário Macro | **20%** | Variável por indexador (CDI+/pré/indef.) |
+| Liquidez | **10%** | Percentil do número de observações |
 
-**Classificação:**
+Classificação:
 
-| Classe | Score | Perfil |
-|--------|-------|--------|
-| 🟢 **A** | 80–100 | Excelente |
-| 🟡 **B** | 60–79 | Bom |
-| 🟠 **C** | 40–59 | Regular |
-| 🔴 **D** | 0–39 | Atenção |
+| Classe | Score |
+|--------|-------|
+| 🟢 **A** | 80–100 |
+| 🟡 **B** | 60–79 |
+| 🟠 **C** | 40–59 |
+| 🔴 **D** | 0–39 |
 
-> Detalhes completos: [docs/modelo_score.md](docs/modelo_score.md)
+Detalhes: [docs/modelo_score.md](docs/modelo_score.md)
 
 ---
 
@@ -234,5 +292,5 @@ Score ponderado de **0 a 100** por FIDC:
 
 ## 📄 Licença
 
-Este projeto foi desenvolvido para fins acadêmicos — FIAP 2026.
-Os dados de FIDCs são públicos e fornecidos pela ANBIMA e CVM.
+Projeto desenvolvido para fins acadêmicos — FIAP 2026.
+Os dados de FIDCs são públicos e fornecidos pela ANBIMA, BCB e CVM.
