@@ -1,79 +1,129 @@
 # Notebook: 02_indicadores_macro
 # Camada: Gold — Radar FIDC
-# Executar via: Databricks Workspace
+#
+# Consolida indicadores macroeconômicos atuais (SELIC, IPCA, CDI) e projeções 12m
+# em uma única tabela `gold/indicadores_macro/indicadores.parquet`.
+#
+# Não altera o score por FIDC — o ajuste macro é responsabilidade do 01_score_fidc.
 
+import io
 import os
-# Databricks notebook source
-# RADAR FIDC — 02: Indicadores Macro
-import pandas as pd, io
-from azure.storage.blob import BlobServiceClient
+import sys
 from datetime import datetime
-CONNECTION_STRING = os.environ["AZURE_CONNECTION_STRING"]
+
+import pandas as pd
+from azure.storage.blob import BlobServiceClient
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from _common import azure_connection_string  # noqa: E402
+
+
+CONNECTION_STRING = azure_connection_string()
 blob_svc = BlobServiceClient.from_connection_string(CONNECTION_STRING)
 silver = blob_svc.get_container_client("silver")
-gold   = blob_svc.get_container_client("gold")
+gold = blob_svc.get_container_client("gold")
+
+# Fallback usado APENAS se a Silver estiver indisponível (não para mascarar erro).
+FALLBACK = {
+    "selic_atual": None,
+    "ipca_12m": None,
+    "cdi_atual": None,
+    "selic_projetada_12m": None,
+    "ipca_projetado_12m": None,
+}
 
 # COMMAND ----------
 
 df_macro = pd.DataFrame()
-blobs = [b for b in silver.list_blobs(name_starts_with="dados_macroeconomicos/") if b.name.endswith(".parquet")]
-print(f"Arquivos macro: {len(blobs)}")
+blobs = [
+    b for b in silver.list_blobs(name_starts_with="dados_macroeconomicos/")
+    if b.name.endswith(".parquet")
+]
+print(f"Arquivos macro encontrados: {len(blobs)}")
 for b in blobs:
     try:
         d = silver.get_blob_client(b.name).download_blob().readall()
         df_tmp = pd.read_parquet(io.BytesIO(d))
         df_macro = pd.concat([df_macro, df_tmp], ignore_index=True)
-        print(f"  {b.name}: {len(df_tmp)} linhas | cols: {list(df_tmp.columns)[:10]}")
+        print(f"  {b.name}: {len(df_tmp)} linhas")
     except Exception as e:
-        print(f"  Erro: {e}")
+        print(f"  Erro lendo {b.name}: {e}")
+
 
 # COMMAND ----------
 
-ind = {"selic_atual": 14.75, "ipca_12m": 5.06, "cdi_atual": 14.65,
-        "selic_projetada_12m": 14.50, "ipca_projetado_12m": 5.50}
+def ultimo_valor(df, keywords):
+    """Pega último valor numérico não-nulo de qualquer coluna cujo nome bata."""
+    for col in df.columns:
+        if any(k in col.lower() for k in keywords):
+            v = pd.to_numeric(df[col], errors="coerce").dropna()
+            if not v.empty:
+                return float(v.iloc[-1])
+    return None
 
-if len(df_macro) > 0:
-    for col in df_macro.columns:
-        if "selic" in col.lower():
-            v = pd.to_numeric(df_macro[col], errors="coerce").dropna()
-            if len(v): ind["selic_atual"] = round(float(v.iloc[-1]), 4)
-        if "ipca" in col.lower():
-            v = pd.to_numeric(df_macro[col], errors="coerce").dropna()
-            if len(v): ind["ipca_12m"] = round(float(v.tail(12).sum()), 4)
 
+def soma_ultimos_12(df, keywords):
+    """Soma das últimas 12 observações (para acumulado IPCA)."""
+    for col in df.columns:
+        if any(k in col.lower() for k in keywords):
+            v = pd.to_numeric(df[col], errors="coerce").dropna()
+            if not v.empty:
+                return round(float(v.tail(12).sum()), 4)
+    return None
+
+
+ind = dict(FALLBACK)
+
+if not df_macro.empty:
+    ind["selic_atual"] = ultimo_valor(df_macro, ["selic_meta", "selic"])
+    ind["cdi_atual"] = ultimo_valor(df_macro, ["cdi"])
+    ind["ipca_12m"] = soma_ultimos_12(df_macro, ["ipca"])
+    # Sem fonte Focus diretamente: aproximação selic_projetada = selic_atual - 50bps
+    if ind["selic_atual"] is not None:
+        ind["selic_projetada_12m"] = round(ind["selic_atual"] - 0.5, 2)
+    if ind["ipca_12m"] is not None:
+        ind["ipca_projetado_12m"] = round(ind["ipca_12m"] * 0.9, 2)
+
+
+# Cenário macroeconômico
+def classificar_cenario(selic):
+    if selic is None:
+        return "indisponivel", "Sem dados macro suficientes."
+    if selic >= 13:
+        return (
+            "favoravel_posfixado",
+            f"SELIC {selic:.2f}% favorece FIDCs pós-fixados (CDI+). "
+            "Alta remuneração relativa frente à renda fixa tradicional.",
+        )
+    if selic >= 10:
+        return (
+            "neutro",
+            f"SELIC {selic:.2f}% em patamar neutro. Diversificação recomendada.",
+        )
+    return (
+        "favoravel_prefixado",
+        f"SELIC {selic:.2f}% baixa favorece FIDCs pré-fixados, "
+        "que travam taxa antes de novas quedas.",
+    )
+
+
+cenario, descricao = classificar_cenario(ind["selic_atual"])
+ind["cenario_macro"] = cenario
+ind["descricao_cenario"] = descricao
 ind["data_ref"] = datetime.today().strftime("%Y-%m-%d")
-s = ind["selic_atual"]
-if s >= 13:
-    ind["cenario_macro"] = "favoravel_posfixado"
-    ind["descricao_cenario"] = f"SELIC {s}% favorece FIDCs pos-fixados (CDI+). Alta remuneracao relativa."
-elif s >= 10:
-    ind["cenario_macro"] = "neutro"
-    ind["descricao_cenario"] = f"SELIC {s}% neutro. Diversificacao recomendada."
-else:
-    ind["cenario_macro"] = "favoravel_prefixado"
-    ind["descricao_cenario"] = f"SELIC {s}% baixo. FIDCs prefixados com melhor relacao risco/retorno."
 
-print(f"Indicadores: {ind}")
+print("Indicadores macro:")
+for k, v in ind.items():
+    print(f"  {k}: {v}")
 
 # COMMAND ----------
 
-try: gold.create_container()
-except: pass
+try:
+    gold.create_container()
+except Exception:
+    pass
+
 buf = io.BytesIO()
 pd.DataFrame([ind]).to_parquet(buf, index=False, engine="pyarrow")
 gold.get_blob_client("indicadores_macro/indicadores.parquet").upload_blob(buf.getvalue(), overwrite=True)
-print("Indicadores salvos: gold/indicadores_macro/indicadores.parquet")
-
-# Atualizar score_macro no score_fidc
-try:
-    d2 = gold.get_blob_client("score_fidc/score_fidc.parquet").download_blob().readall()
-    df_sc = pd.read_parquet(io.BytesIO(d2))
-    df_sc["score_macro"] = 80.0 if ind["cenario_macro"]=="favoravel_posfixado" else 60.0 if ind["cenario_macro"]=="neutro" else 70.0
-    df_sc["score_final"] = (df_sc["score_retorno"]*0.40 + df_sc["score_risco"]*0.30 +
-                            df_sc["score_macro"]*0.20  + df_sc["score_liquidez"]*0.10).round(1)
-    df_sc["classificacao"] = df_sc["score_final"].apply(lambda s: "A" if s>=80 else "B" if s>=60 else "C" if s>=40 else "D")
-    buf2 = io.BytesIO(); df_sc.to_parquet(buf2, index=False, engine="pyarrow")
-    gold.get_blob_client("score_fidc/score_fidc.parquet").upload_blob(buf2.getvalue(), overwrite=True)
-    print(f"Score atualizado com macro: {df_sc.groupby('classificacao').size().to_dict()}")
-except Exception as e:
-    print(f"Aviso: nao foi possivel atualizar score macro: {e}")
+print("\nSalvo: gold/indicadores_macro/indicadores.parquet")
