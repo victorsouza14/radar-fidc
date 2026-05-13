@@ -1,0 +1,25 @@
+/* ─────────────────────────────────────────────────────────────────
+ * Reset mínimo + base do body.
+ * ───────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--cream-100);
+  color: var(--ink-900);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+
+  /* Sticky footer: body em flex column, main flexível, footer empurrado pro fim. */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+img { display: block; max-width: 100%; }
+button { font-family: inherit; cursor: pointer; }

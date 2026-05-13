@@ -1,81 +1,64 @@
 # Notebook: etl_fidc_bcb
 # Camada: Bronze — Ingestão
-# Fonte: ANBIMA/BCB/CVM
+# Fonte: BCB / SGS — indicadores macroeconômicos
 
 # Databricks notebook source
 # MAGIC %pip install python-bcb azure-storage-blob pandas
 
 # COMMAND ----------
 
-from bcb import sgs
-import pandas as pd
-from datetime import date
-from datetime import timedelta
-from azure.storage.blob import BlobServiceClient
-from io import StringIO
 import os
-import shutil
+import sys
+from datetime import date, timedelta
+from io import StringIO
+
+import pandas as pd
+from azure.storage.blob import BlobServiceClient
+from bcb import sgs
+
+# Permite importar _common.py mesmo executando este notebook isoladamente.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from _common import azure_connection_string  # noqa: E402
 
 
-class macroMetricas:
-    def __init__(self):
-        self.tabela = None
-        self.data_atual = date.today()
+# COMMAND ----------
+
+class MacroMetricas:
+    def __init__(self, data_referencia: date | None = None):
+        self.data_referencia = data_referencia or date.today()
 
     def gerarTabelaConsolidada(self, dict_metricas):
-        """
-        Gera a linha horizontal. Se data_referencia for None, usa HOJE.
-        """
-        data = date.today()            
-        print(f"\n--- Gerando Tabela Consolidada para: {data} ---")
-        linha_dados = {"data_processamento": data}
+        print(f"\nGerando tabela consolidada para: {self.data_referencia}")
+        linha = {"data_processamento": self.data_referencia}
         for nome, codigo in dict_metricas.items():
             df_temp = self.gerarTabelaMetrica(nome, codigo)
-            if df_temp is not None:
-                linha_dados[nome] = df_temp[nome].iloc[0]
-            else:
-                linha_dados[nome] = None
-        df_final = pd.DataFrame([linha_dados])
-        return df_final
-
+            linha[nome] = df_temp[nome].iloc[-1] if df_temp is not None and not df_temp.empty else None
+        return pd.DataFrame([linha])
 
     def gerarTabelaMetrica(self, nome, numero):
+        # Janela de 90 dias para cobrir feriados/fins de semana e indicadores mensais (IPCA, IGP-M).
         try:
-            # COMPORTAMENTO HISTÓRICO: Pega o dado vigente na data passada
-            # Truque: Buscamos 40 dias atrás até a data alvo e pegamos o último (.tail(1))
-            # Isso resolve problemas de feriado, fim de semana e dados mensais (IPCA)
-            inicio_janela = self.data_atual - timedelta(days=90)
-            df = sgs.get({nome: numero}, start=inicio_janela, end=self.data_atual)
-            if df.empty:
-                return None
-            return  df
+            inicio = self.data_referencia - timedelta(days=90)
+            df = sgs.get({nome: numero}, start=inicio, end=self.data_referencia)
+            return df if not df.empty else None
         except Exception as e:
-            print(f" Erro em {nome}: {e}")
+            print(f"Erro em {nome} (cod {numero}): {e}")
             return None
 
-
-    def salvarDataLake(self, DF, NOME_CONTAINER, NOME_ARQUIVO):     
-        CONNECTION_STRING = dbutils.secrets.get(scope="escopo", key="AZURECONNSTRING")
-
-        try:
-            print(f"Conectando ao Azure para salvar {NOME_ARQUIVO}...")
-            blob_service_client = BlobServiceClient.from_connection_string(CONNECTION_STRING)
-            output = StringIO()
-            DF.to_csv(output, index=False, sep=";")
-            dados_csv = output.getvalue()
-            caminho_blob = f"{NOME_ARQUIVO}"
-            blob_client = blob_service_client.get_blob_client(container=NOME_CONTAINER, blob=caminho_blob)
-            blob_client.upload_blob(dados_csv, overwrite=True)
-            print(f"Sucesso! Arquivo salvo em: {NOME_CONTAINER}/{caminho_blob}")
-        except Exception as e:
-             print(f"Erro ao salvar no Azure: {e}")
+    def salvarDataLake(self, DF, NOME_CONTAINER, CAMINHO_BLOB):
+        conn = azure_connection_string()
+        client = BlobServiceClient.from_connection_string(conn)
+        output = StringIO()
+        DF.to_csv(output, index=False, sep=";")
+        client.get_blob_client(container=NOME_CONTAINER, blob=CAMINHO_BLOB).upload_blob(
+            output.getvalue(), overwrite=True
+        )
+        print(f"OK: {NOME_CONTAINER}/{CAMINHO_BLOB} ({len(DF)} linhas)")
 
 
-from datetime import date 
+# COMMAND ----------
 
-metrica = macroMetricas() 
-
-metricas_avancadas = {
+METRICAS = {
     "selic_meta": 432,
     "cdi_diario": 12,
     "dolar_venda": 1,
@@ -88,26 +71,18 @@ metricas_avancadas = {
     "inadimplencia_pf": 21083,
     "utilizacao_capacidade": 24352,
     "ic_br_agro": 27574,
-    "ic_br_energia": 27575
+    "ic_br_energia": 27575,
 }
 
 
-print("\n--- Processando HOJE ---")
-df_hoje = metrica.gerarTabelaConsolidada(metricas_avancadas)
-print(df_hoje)
+if __name__ == "__main__":
+    hoje = date.today()
+    metrica = MacroMetricas(hoje)
+    df_hoje = metrica.gerarTabelaConsolidada(METRICAS)
+    print(df_hoje)
 
-data = date.today()
-ano = data.strftime('%Y')
-mes = data.strftime('%m')
-dia = data.strftime('%d')
-
-nome_arquivo_hoje = f"metricas_macro_{data}.csv"
-metrica.salvarDataLake(
-    df_hoje, 
-    "bronze", 
-    f"dados_macroeconomicos/bcb/{ano}/{mes}/{dia}/{nome_arquivo_hoje}"
-)
-
-
-# COMMAND ----------
-
+    caminho = (
+        f"dados_macroeconomicos/bcb/{hoje:%Y}/{hoje:%m}/{hoje:%d}/"
+        f"metricas_macro_{hoje.isoformat()}.csv"
+    )
+    metrica.salvarDataLake(df_hoje, "bronze", caminho)

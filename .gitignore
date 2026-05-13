@@ -26,10 +26,18 @@ env/
 dist/
 build/
 
-# Dados locais (usar ADLS Gen2 como fonte de verdade)
+# Dados locais bronze/silver/gold gerados pelo pipeline Azure
 data/
 *.parquet
+
+# CSVs em geral são gitignored, EXCETO os datasets fixos do projeto
 *.csv
+!data_real/**/*.csv
+!data_real/*.csv
+
+# Datasets binários do projeto (versionados — são fontes do dashboard)
+!data_real/*.xlsx
+!data_real/*.pkl
 
 # macOS
 .DS_Store

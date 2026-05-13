@@ -1,0 +1,81 @@
+/* ─────────────────────────────────────────────────────────────────
+ * Radar FIDC — Design Tokens
+ * Fonte da verdade para cores, spacing, tipografia, shadows, radius.
+ * Paleta derivada da logo: verde-mata profundo + creme.
+ * ───────────────────────────────────────────────────────────────── */
+:root {
+  /* Cores primárias (extraídas da logo) */
+  --green-950: #051F0E;
+  --green-900: #093A1B;  /* cor principal da logo */
+  --green-800: #0F4E26;
+  --green-700: #166432;
+  --green-600: #1F8045;
+  --green-500: #2E9B57;
+  --green-400: #5BBF80;
+  --green-300: #8FD7AB;
+  --green-100: #DFF2E6;
+  --green-50:  #F0F9F3;
+
+  /* Neutros */
+  --cream-50:  #FBF8F1;
+  --cream-100: #F5F1E8;
+  --cream-200: #ECE5D2;
+  --cream-300: #DDD3B7;
+
+  --ink-900: #0E1A12;
+  --ink-700: #2A3A30;
+  --ink-500: #5C6D63;
+  --ink-300: #9AA8A0;
+  --ink-100: #D7DDD9;
+
+  --white: #FFFFFF;
+
+  /* Semânticas (classes A/B/C/D) */
+  --class-a: #2E9B57;
+  --class-b: #E8A33D;
+  --class-c: #D97843;
+  --class-d: #C0392B;
+
+  --info:  #2563EB;
+  --warn:  #B45309;
+  --error: #C0392B;
+
+  /* Spacing — escala 4px */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+
+  /* Tipografia */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --fs-xs:   0.72rem;
+  --fs-sm:   0.82rem;
+  --fs-base: 0.92rem;
+  --fs-md:   1.05rem;
+  --fs-lg:   1.25rem;
+  --fs-xl:   1.6rem;
+  --fs-2xl:  2.1rem;
+  --fs-3xl:  2.8rem;
+
+  /* Border radius */
+  --r-sm:   6px;
+  --r-md:  10px;
+  --r-lg:  14px;
+  --r-xl:  20px;
+  --r-full: 999px;
+
+  /* Sombras em camadas */
+  --shadow-xs: 0 1px 2px rgba(9, 58, 27, 0.04);
+  --shadow-sm: 0 2px 8px rgba(9, 58, 27, 0.06), 0 1px 2px rgba(9, 58, 27, 0.04);
+  --shadow-md: 0 8px 24px rgba(9, 58, 27, 0.08), 0 2px 6px rgba(9, 58, 27, 0.04);
+  --shadow-lg: 0 16px 40px rgba(9, 58, 27, 0.12), 0 4px 12px rgba(9, 58, 27, 0.06);
+
+  /* Transições */
+  --t-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  --t-base: 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
