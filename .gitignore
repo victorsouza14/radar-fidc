@@ -10,7 +10,6 @@
 # Arquivos internos do projeto (orquestrador interno)
 AGENT.md
 MEMORY.md
-POWERBI_SETUP.md
 ralph.sh
 prd.json
 ralph.log
