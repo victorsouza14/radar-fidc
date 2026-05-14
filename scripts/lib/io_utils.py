@@ -1,30 +1,46 @@
-"""IO defensivo — leitura dos arquivos do pipeline com fallback para DataFrame vazio."""
-from __future__ import annotations
+"""IO defensivo — leitura dos arquivos do pipeline no Gold (ADLS).
 
-from pathlib import Path
-from typing import Optional
+Substitui a leitura de `data_real/` local pela leitura direta do ADLS,
+mantendo o contrato de retorno (tuplas e DataFrames) idêntico ao código
+anterior para preservar `payload.build_*` sem mudança.
+
+Cache:
+- Bytes invalidados via ETag (zero egress quando cache local válido)
+- Parse cache em `.parsed.pkl` (skip do parse openpyxl que é lento)
+Implementado em `lib.azure_io`.
+"""
+from __future__ import annotations
 
 import pandas as pd
 
+from . import azure_io
+from .gold_paths import PATHS
+from .logger import get_logger
 
-def read_csv_safe(path: Path, **kwargs) -> pd.DataFrame:
-    if not path.exists():
-        return pd.DataFrame()
-    return pd.read_csv(path, **kwargs)
-
-
-def read_excel_sheet(path: Path, sheet_name: str) -> pd.DataFrame:
-    if not path.exists():
-        return pd.DataFrame()
-    return pd.read_excel(path, sheet_name=sheet_name)
+log = get_logger(__name__)
 
 
-def read_clientes(path: Path) -> pd.DataFrame:
-    return read_csv_safe(path, encoding="utf-8-sig")
+def _empty_on_404(fn, *args, **kwargs):
+    """Wrapper: devolve DataFrame vazio se o arquivo não existe no Gold."""
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:  # noqa: BLE001 — qualquer falha de I/O cai aqui
+        # ResourceNotFoundError do SDK Azure herda de HttpResponseError.
+        # Imports lazy para evitar carga de azure-core no top-level se não precisar.
+        from azure.core.exceptions import ResourceNotFoundError
+
+        if isinstance(e, ResourceNotFoundError):
+            log.warn("file_not_found", path=str(args[0]) if args else "?")
+            return pd.DataFrame()
+        raise
 
 
-def read_credit_scores(path: Path) -> pd.DataFrame:
-    df = read_csv_safe(path)
+def read_clientes() -> pd.DataFrame:
+    return _empty_on_404(azure_io.read_csv, PATHS["clientes"], encoding="utf-8-sig")
+
+
+def read_credit_scores() -> pd.DataFrame:
+    df = _empty_on_404(azure_io.read_csv, PATHS["credit"])
     if df.empty:
         return df
     for col in ("score_credito", "prob_default", "pct_default", "defaultou"):
@@ -33,8 +49,8 @@ def read_credit_scores(path: Path) -> pd.DataFrame:
     return df
 
 
-def read_macro(path: Path) -> pd.DataFrame:
-    df = read_csv_safe(path, sep=";", dtype=str)
+def read_macro() -> pd.DataFrame:
+    df = _empty_on_404(azure_io.read_csv, PATHS["macro"], sep=";", dtype=str)
     if df.empty:
         return df
     df["data_processamento"] = pd.to_datetime(df["data_processamento"], errors="coerce")
@@ -44,19 +60,25 @@ def read_macro(path: Path) -> pd.DataFrame:
     return df.sort_values("data_processamento").reset_index(drop=True)
 
 
-def read_rating(path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
-    if not path.exists():
-        return pd.DataFrame(), pd.DataFrame()
-    xls = pd.ExcelFile(path)
-    geral  = pd.read_excel(xls, sheet_name="GERAL")  if "GERAL"  in xls.sheet_names else pd.DataFrame()
-    resumo = pd.read_excel(xls, sheet_name="RESUMO_POR_FUNDO") if "RESUMO_POR_FUNDO" in xls.sheet_names else pd.DataFrame()
-    return geral, resumo
+def read_rating() -> tuple[pd.DataFrame, pd.DataFrame]:
+    try:
+        sheets = azure_io.read_excel_sheets(PATHS["rating"], ["GERAL", "RESUMO_POR_FUNDO"])
+    except Exception as e:  # noqa: BLE001
+        from azure.core.exceptions import ResourceNotFoundError
+        if isinstance(e, ResourceNotFoundError):
+            log.warn("file_not_found", path=PATHS["rating"])
+            return pd.DataFrame(), pd.DataFrame()
+        raise
+    return sheets.get("GERAL", pd.DataFrame()), sheets.get("RESUMO_POR_FUNDO", pd.DataFrame())
 
 
-def read_matches(path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
-    if not path.exists():
-        return pd.DataFrame(), pd.DataFrame()
-    xls = pd.ExcelFile(path)
-    todos   = pd.read_excel(xls, sheet_name="TODOS_OS_MATCHES") if "TODOS_OS_MATCHES" in xls.sheet_names else pd.DataFrame()
-    ranking = pd.read_excel(xls, sheet_name="RANKING_FUNDOS")   if "RANKING_FUNDOS"   in xls.sheet_names else pd.DataFrame()
-    return todos, ranking
+def read_matches() -> tuple[pd.DataFrame, pd.DataFrame]:
+    try:
+        sheets = azure_io.read_excel_sheets(PATHS["matches"], ["TODOS_OS_MATCHES", "RANKING_FUNDOS"])
+    except Exception as e:  # noqa: BLE001
+        from azure.core.exceptions import ResourceNotFoundError
+        if isinstance(e, ResourceNotFoundError):
+            log.warn("file_not_found", path=PATHS["matches"])
+            return pd.DataFrame(), pd.DataFrame()
+        raise
+    return sheets.get("TODOS_OS_MATCHES", pd.DataFrame()), sheets.get("RANKING_FUNDOS", pd.DataFrame())

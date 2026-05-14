@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """Gera o `data.json` consumido pelo dashboard Radar FIDC.
 
-Orquestra leitura dos outputs do pipeline (data_real/) e produção do payload
-delegando trabalho aos módulos em scripts/lib/.
+Lê os outputs do Gold no ADLS (`dfdatalakesprint/gold/final/`),
+delega a montagem do payload aos módulos em `scripts/lib/`, e
+escreve `data.json` na raiz do repositório.
 
 Uso:
     python scripts/generate_dashboard_data.py
     python scripts/generate_dashboard_data.py --output /tmp/data.json
+
+Pré-requisitos:
+    - AZURE_CONNECTION_STRING em .env (local) ou GitHub Secret (CI)
+    - Arquivos esperados em gold/final/:
+        rating_fidc.xlsx, matches.xlsx, clientes.csv,
+        scores_credito.csv, macroeconomicos/consolidade.csv
 """
 from __future__ import annotations
 
@@ -16,33 +23,45 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Permite rodar tanto como `python scripts/...` quanto via import
+# Permite rodar tanto como `python scripts/...` quanto via import.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib import io_utils, payload  # noqa: E402
-from lib.paths import Paths  # noqa: E402
+from lib.logger import get_logger  # noqa: E402
+
+log = get_logger(__name__)
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_OUTPUT = REPO_ROOT / "data.json"
 
 
 def now_iso_utc() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-def build(paths: Paths) -> dict:
-    print(f"Lendo dados de: {paths.data_real}")
+def build() -> dict:
+    log.info("pipeline_start", source="adls", filesystem="gold", prefix="final")
 
-    if not paths.rating.exists():
-        raise SystemExit(f"ERRO: {paths.rating} não encontrado. Rode scripts/rating.py primeiro.")
+    log.info("reading", source="rating_fidc.xlsx")
+    geral, resumo = io_utils.read_rating()
+    if geral.empty:
+        raise SystemExit("ERRO: gold/final/rating_fidc.xlsx ausente ou vazio. Pipeline Databricks deve gerar antes.")
 
-    print("  → rating_fidc.xlsx");          geral, resumo  = io_utils.read_rating(paths.rating)
-    print("  → matches.xlsx");              todos, ranking = io_utils.read_matches(paths.matches)
-    print("  → clientes.csv");              df_clientes    = io_utils.read_clientes(paths.clientes)
-    print("  → scores_credito.csv");        df_credit      = io_utils.read_credit_scores(paths.credit)
-    print("  → macroeconomicos/...csv");    df_macro       = io_utils.read_macro(paths.macro)
+    log.info("reading", source="matches.xlsx")
+    todos, ranking = io_utils.read_matches()
+
+    log.info("reading", source="clientes.csv")
+    df_clientes = io_utils.read_clientes()
+
+    log.info("reading", source="scores_credito.csv")
+    df_credit = io_utils.read_credit_scores()
+
+    log.info("reading", source="macroeconomicos/consolidade.csv")
+    df_macro = io_utils.read_macro()
 
     return {
         "generated_at": now_iso_utc(),
         "config": {
-            # Constantes compartilhadas com o front (única fonte de verdade).
             "min_meses_historico": payload.MIN_MESES_HISTORICO,
             "retorno_outlier_pct": payload.RETORNO_OUTLIER_PCT,
         },
@@ -62,31 +81,33 @@ def write_json(out: Path, data: dict) -> None:
     )
 
 
-def print_summary(out: Path, data: dict) -> None:
+def emit_summary(out: Path, data: dict) -> None:
     size_kb = out.stat().st_size // 1024
-    print(f"\nOK: {out} ({size_kb} KB)")
-    print(f"  FIDCs (resumo)   : {len(data['fidcs']['resumo'])}")
-    print(f"  FIDCs (detalhe)  : {len(data['fidcs']['detalhe'])}")
-    print(f"  Scatter          : {len(data['fidcs']['scatter'])}")
-    print(f"  Clientes         : {data['clientes']['total']}")
-    print(f"  Matches          : {data['matches']['total']}")
-    print(f"  Credit empresas  : {len(data['credit']['empresas'])}")
-    print(f"  Distribuição risco FIDCs: {data['fidcs']['stats']['distribuicao']['por_risco']}")
-    print(f"  Distribuição perfis FIDCs: {data['fidcs']['stats']['distribuicao']['por_perfil']}")
+    log.info(
+        "pipeline_end",
+        output=str(out),
+        size_kb=size_kb,
+        fidcs_resumo=len(data["fidcs"]["resumo"]),
+        fidcs_detalhe=len(data["fidcs"]["detalhe"]),
+        scatter=len(data["fidcs"]["scatter"]),
+        clientes=data["clientes"]["total"],
+        matches=data["matches"]["total"],
+        credit=len(data["credit"]["empresas"]),
+        dist_por_risco=data["fidcs"]["stats"]["distribuicao"]["por_risco"],
+        dist_por_perfil=data["fidcs"]["stats"]["distribuicao"]["por_perfil"],
+    )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", default=None, help="Sobrepõe RADAR_DATA_DIR")
-    parser.add_argument("--output",   default=None, help="Sobrepõe data.json de saída")
+    parser.add_argument("--output", default=None, help="Sobrepõe data.json de saída")
     args = parser.parse_args()
 
-    paths = Paths.from_data_dir(args.data_dir) if args.data_dir else Paths.default()
-    out = Path(args.output) if args.output else paths.dashboard_json
+    out = Path(args.output) if args.output else DEFAULT_OUTPUT
 
-    data = build(paths)
+    data = build()
     write_json(out, data)
-    print_summary(out, data)
+    emit_summary(out, data)
     return 0
 
 
