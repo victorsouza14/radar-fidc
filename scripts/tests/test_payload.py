@@ -211,7 +211,50 @@ class TestBuildFidcsEmpty:
         out = build_fidcs(pd.DataFrame())
         assert out["stats"]["total_classes"] == 0
         assert out["stats"]["total_fundos"] == 0
+        assert out["stats"]["indicadores"] == {
+            "retorno_max": None,
+            "retorno_min": None,
+            "inad_media": None,
+        }
         assert out["detalhe"] == []
+
+
+class TestBuildFidcsIndicadores:
+    """Indicadores agregados são calculados server-side — frontend só renderiza."""
+
+    def test_retorno_max_min_descartam_negativos(self) -> None:
+        geral = pd.DataFrame(
+            [
+                _geral_row(CNPJ=f"{i:014d}", FUNDO=f"F{i}", RETORNO_ANUAL=ret, MESES_HISTORICO=24)
+                for i, ret in enumerate([8.0, 12.0, 15.0, 22.0, -5.0, 0.0])
+            ]
+        )
+        ind = build_fidcs(geral)["stats"]["indicadores"]
+        # Negativos e zero descartados.
+        assert ind["retorno_max"] == 22.0
+        assert ind["retorno_min"] == 8.0
+
+    def test_inad_media_eh_pos_iqr(self) -> None:
+        rows = [
+            _geral_row(CNPJ=f"{i:014d}", FUNDO=f"F{i}", TAXA_INADIMPLENCIA=v, MESES_HISTORICO=24)
+            for i, v in enumerate([2.0, 3.0, 4.0, 5.0, 6.0, 9999.0])
+        ]
+        ind = build_fidcs(pd.DataFrame(rows))["stats"]["indicadores"]
+        # 9999 é descartado pelo IQR.
+        assert ind["inad_media"] is not None
+        assert ind["inad_media"] < 10  # média sã, não dominada pelo outlier
+
+    def test_fundos_curtos_nao_entram_no_calculo(self) -> None:
+        """``MIN_MESES_HISTORICO`` filtra o universo dos indicadores."""
+        geral = pd.DataFrame(
+            [
+                _geral_row(CNPJ="A", FUNDO="confiavel", RETORNO_ANUAL=20.0, MESES_HISTORICO=24),
+                _geral_row(CNPJ="B", FUNDO="curto", RETORNO_ANUAL=99.0, MESES_HISTORICO=2),
+            ]
+        )
+        ind = build_fidcs(geral)["stats"]["indicadores"]
+        # 99.0 do fundo curto não entra; só o confiável.
+        assert ind["retorno_max"] == 20.0
 
 
 class TestBuildFidcsMinHistorico:

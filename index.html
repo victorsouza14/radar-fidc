@@ -322,8 +322,8 @@
 
         <div class="grid-2" style="margin-bottom:20px">
           <div class="card">
-            <div class="card-title"><svg><use href="#icon-activity"/></svg> Estatísticas da seleção</div>
-            <div class="card-subtitle">Médias agregadas sobre os fundos filtrados.</div>
+            <div class="card-title"><svg><use href="#icon-activity"/></svg> Indicadores da carteira</div>
+            <div class="card-subtitle">Valores calculados pelo pipeline (IQR Tukey, retorno desconsidera negativos).</div>
             <div class="stats-grid">
               <div class="stat-block">
                 <div class="stat-label">Retorno máximo</div>
@@ -336,19 +336,9 @@
                 <div class="stat-unit">% ao ano</div>
               </div>
               <div class="stat-block">
-                <div class="stat-label">Volatilidade média</div>
-                <div class="stat-value tnum" id="fidcs-stat-vol">—</div>
-                <div class="stat-unit">% ao ano</div>
-              </div>
-              <div class="stat-block">
                 <div class="stat-label">Inadimplência média</div>
                 <div class="stat-value tnum" id="fidcs-stat-inad">—</div>
                 <div class="stat-unit">% da carteira</div>
-              </div>
-              <div class="stat-block">
-                <div class="stat-label">Score risco médio</div>
-                <div class="stat-value tnum" id="fidcs-stat-score">—</div>
-                <div class="stat-unit">0 a 100</div>
               </div>
             </div>
           </div>

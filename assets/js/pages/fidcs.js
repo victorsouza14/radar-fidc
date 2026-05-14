@@ -2,7 +2,7 @@ import { Store } from "../store.js";
 import { fmtNum, fmtPct, escapeHTML } from "../utils/format.js";
 import { setText, onInput, onChange, onClick, resetField, debounce } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
-import { riscoBadge, riscoColor, perfilColor, RISCO_ORDER_FULL } from "../theme.js";
+import { riscoBadge, riscoColor, perfilColor, RISCO_ORDER } from "../theme.js";
 import { scatterLogY } from "../components/chart-factory.js";
 import { createPaginatedTable } from "../components/paginated-table.js";
 
@@ -53,76 +53,32 @@ const table = createPaginatedTable({
   },
 });
 
-function percentile(sorted, p) {
-  if (!sorted.length) return null;
-  const idx = (sorted.length - 1) * p;
-  const lo = Math.floor(idx), hi = Math.ceil(idx);
-  if (lo === hi) return sorted[lo];
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
-}
-
-// IQR (Tukey 1.5×): remove valores fora de [Q1-1.5·IQR, Q3+1.5·IQR].
-// Amostras < 4 são pequenas demais para a estatística — devolve cru.
-function withoutOutliers(items, field) {
-  const values = [];
-  for (const it of items) {
-    const v = it[field];
-    if (typeof v === "number" && !Number.isNaN(v)) values.push(v);
-  }
-  if (values.length < 4) return values;
-  values.sort((a, b) => a - b);
-  const q1 = percentile(values, 0.25);
-  const q3 = percentile(values, 0.75);
-  const iqr = q3 - q1;
-  const lo = q1 - 1.5 * iqr;
-  const hi = q3 + 1.5 * iqr;
-  return values.filter(v => v >= lo && v <= hi);
-}
-
-function statsFromValues(values) {
-  if (!values.length) return { min: null, max: null, avg: null };
-  let min = values[0], max = values[0], sum = 0;
-  for (const v of values) {
-    if (v < min) min = v;
-    if (v > max) max = v;
-    sum += v;
-  }
-  return { min, max, avg: sum / values.length };
-}
-
-function renderStats(filtered) {
-  const fmt = (v, d = 2) => v == null ? "—" : v.toFixed(d);
-  // Retorno descarta negativos antes do IQR — perdas históricas distorcem
-  // o mínimo e o produto pede apenas o intervalo positivo.
-  const positivos = filtered.filter(
-    f => typeof f.retorno_anual === "number" && f.retorno_anual > 0,
-  );
-  const ret = statsFromValues(withoutOutliers(positivos, "retorno_anual"));
-  setText("fidcs-stat-retorno-max", fmt(ret.max));
-  setText("fidcs-stat-retorno-min", fmt(ret.min));
-
-  const vol   = statsFromValues(withoutOutliers(filtered, "volatilidade"));
-  const inad  = statsFromValues(withoutOutliers(filtered, "taxa_inad"));
-  const score = statsFromValues(withoutOutliers(filtered, "score_risco"));
-  setText("fidcs-stat-vol",   fmt(vol.avg));
-  setText("fidcs-stat-inad",  fmt(inad.avg));
-  setText("fidcs-stat-score", fmt(score.avg, 1));
+function renderStats() {
+  // Indicadores vêm prontos do backend (payload.build_fidcs._fidc_indicadores).
+  // O frontend só formata — sem recalcular nada, mesmo após filtros de UI.
+  const fmt = (v, d = 2) => (v == null ? "—" : v.toFixed(d));
+  const ind = Store.fidcs.stats()?.indicadores ?? {};
+  setText("fidcs-stat-retorno-max", fmt(ind.retorno_max));
+  setText("fidcs-stat-retorno-min", fmt(ind.retorno_min));
+  setText("fidcs-stat-inad",        fmt(ind.inad_media));
 }
 
 function renderScatter(filtered) {
   if (!_mounted) return;
   // Agrupa por risco — cada classe vira dataset distinto (legend separa).
+  // Fundos com risco "SEM DADOS" são omitidos do scatter (não são plotáveis
+  // contra o eixo score_risco que estaria nulo).
   const buckets = Object.create(null);
-  for (const r of RISCO_ORDER_FULL) buckets[r] = [];
+  for (const r of RISCO_ORDER) buckets[r] = [];
   for (const f of filtered) {
-    const r = RISCO_ORDER_FULL.includes(f.risco) ? f.risco : "SEM DADOS";
-    buckets[r].push({
+    if (!RISCO_ORDER.includes(f.risco)) continue;
+    buckets[f.risco].push({
       x: f.score_risco,
       y: f.retorno_anual,
       meta: { nome: f.fundo, cota: f.tipo_cota, vol: f.volatilidade, inad: f.taxa_inad },
     });
   }
-  const groups = RISCO_ORDER_FULL
+  const groups = RISCO_ORDER
     .filter(r => buckets[r].length > 0)
     .map(r => ({ label: r, color: riscoColor(r), points: buckets[r] }));
 
@@ -147,7 +103,7 @@ function onStateChange() {
   table.reset();
   const filtered = applyFilters(state);
   table.render(filtered);
-  renderStats(filtered);
+  // Indicadores são da carteira inteira (backend) — não reagem aos filtros de UI.
   scheduleChart(filtered);
 }
 
@@ -166,7 +122,7 @@ function bindFilters() {
 export function init() {
   const filtered = applyFilters(state);
   table.render(filtered);
-  renderStats(filtered);
+  renderStats();
   bindFilters();
 }
 

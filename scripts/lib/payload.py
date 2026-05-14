@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from .cnae_setor import setor_from_cnae
@@ -130,6 +131,38 @@ def _fidc_detalhe_row(r: pd.Series) -> dict[str, Any]:
     }
 
 
+def _iqr_filter(series: pd.Series) -> pd.Series:
+    """Aplica filtro Tukey 1.5x IQR. Amostras < 4 são pequenas demais — devolve cru."""
+    s = pd.to_numeric(series, errors="coerce").dropna()
+    if len(s) < 4:
+        return s
+    q1, q3 = s.quantile(0.25), s.quantile(0.75)
+    iqr = q3 - q1
+    return s[(s >= q1 - 1.5 * iqr) & (s <= q3 + 1.5 * iqr)]
+
+
+def _fidc_indicadores(confiaveis: pd.DataFrame) -> dict[str, Any]:
+    """Estatísticas resumidas da seleção confiável — fonte única, calculada server-side."""
+    if confiaveis.empty:
+        return {"retorno_max": None, "retorno_min": None, "inad_media": None}
+
+    # Retorno: descarta valores não positivos antes do IQR (perdas históricas
+    # distorcem a leitura e o produto pede apenas o intervalo positivo).
+    retornos_positivos = confiaveis.loc[confiaveis["RETORNO_ANUAL"] > 0, "RETORNO_ANUAL"]
+    ret_filtrado = _iqr_filter(retornos_positivos)
+
+    inad_filtrado = _iqr_filter(confiaveis["TAXA_INADIMPLENCIA"])
+
+    def _round_or_none(v: float | None, ndigits: int) -> float | None:
+        return round(float(v), ndigits) if v is not None and not np.isnan(v) else None
+
+    return {
+        "retorno_max": _round_or_none(ret_filtrado.max() if len(ret_filtrado) else None, 2),
+        "retorno_min": _round_or_none(ret_filtrado.min() if len(ret_filtrado) else None, 2),
+        "inad_media": _round_or_none(inad_filtrado.mean() if len(inad_filtrado) else None, 2),
+    }
+
+
 def build_fidcs(geral: pd.DataFrame) -> dict[str, Any]:
     if geral.empty:
         return {
@@ -137,6 +170,7 @@ def build_fidcs(geral: pd.DataFrame) -> dict[str, Any]:
                 "total_classes": 0,
                 "total_fundos": 0,
                 "distribuicao": {"por_risco": {}, "por_perfil": {}, "por_cota": {}},
+                "indicadores": {"retorno_max": None, "retorno_min": None, "inad_media": None},
             },
             "detalhe": [],
         }
@@ -157,6 +191,7 @@ def build_fidcs(geral: pd.DataFrame) -> dict[str, Any]:
                 "por_perfil": geral["PERFIL_SUGERIDO"].fillna("SEM DADOS").value_counts().to_dict(),
                 "por_cota": geral["TIPO_COTA"].fillna("UNICA").value_counts().to_dict(),
             },
+            "indicadores": _fidc_indicadores(confiaveis),
         },
         "detalhe": [_fidc_detalhe_row(r) for _, r in deduped.head(MAX_FIDC_DETALHE).iterrows()],
     }
