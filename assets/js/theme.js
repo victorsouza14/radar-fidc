@@ -10,12 +10,6 @@ const PERFIL_TOKEN = {
   MODERADO:    "--data-info",
   ARROJADO:    "--data-warning",
 };
-const COTA_TOKEN = {
-  SENIOR:   "--data-info",
-  MEZANINO: "--data-accent",
-  JUNIOR:   "--data-warning",
-  UNICA:    "--data-neutral",
-};
 const RISCO_BADGE_CLASS = {
   BAIXO: "badge-A",
   MEDIO: "badge-B",
@@ -27,7 +21,6 @@ const resolve = (map, key, fallback = "--data-neutral") =>
 
 export const riscoColor  = (r) => resolve(RISCO_TOKEN, r);
 export const perfilColor = (p) => resolve(PERFIL_TOKEN, p);
-export const cotaColor   = (c) => resolve(COTA_TOKEN, c);
 export const riscoBadge  = (r) => RISCO_BADGE_CLASS[r] ?? "badge-N";
 
 export const rankBadgeClass = (rank) => (rank <= 3 ? "rank-top" : "");

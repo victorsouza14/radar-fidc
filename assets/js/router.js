@@ -5,8 +5,6 @@ const _mounted = new Set();
 const PAGE_TITLES = {
   overview: "Visão geral",
   fidcs:    "FIDCs",
-  macro:    "Cenário macroeconômico",
-  clientes: "Clientes",
   match:    "Recomendações",
   credit:   "Credit scoring",
 };

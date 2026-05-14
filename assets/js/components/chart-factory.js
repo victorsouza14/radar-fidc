@@ -59,14 +59,6 @@ export function doughnut(id, labels, values, colors, total) {
   });
 }
 
-export function pie(id, labels, values, colors) {
-  return render(id, {
-    type: "pie",
-    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: cardBg() }] },
-    options: { plugins: { legend: { position: "bottom" } } },
-  });
-}
-
 function bar({ id, labels, data, colors, tooltip, horizontal = false }) {
   const valueAxis = { grid: { color: gridColor(), drawTicks: false }, ticks: { color: tickColor() } };
   const labelAxis = {
@@ -101,11 +93,6 @@ function bar({ id, labels, data, colors, tooltip, horizontal = false }) {
 export function horizontalBar(id, labels, data, colors, tooltipLabel) {
   return bar({ id, labels, data, colors, tooltip: tooltipLabel, horizontal: true });
 }
-
-export function verticalBar(id, labels, data, colors, valueFormatter) {
-  return bar({ id, labels, data, colors, tooltip: ctx => ` ${valueFormatter(ctx.raw, ctx)}` });
-}
-
 
 /**
  * Scatter (pontos) com eixo Y logarítmico — domina outliers de retorno

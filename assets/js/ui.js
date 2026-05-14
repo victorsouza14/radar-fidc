@@ -25,12 +25,6 @@ export function getThemeMode() {
   return "system";
 }
 
-export function getResolvedTheme() {
-  const explicit = document.documentElement.getAttribute("data-theme");
-  if (explicit === "light" || explicit === "dark") return explicit;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
 export function setThemeMode(mode) {
   if (mode === "system") {
     try { localStorage.removeItem(STORAGE_THEME); } catch (_) {}
@@ -205,7 +199,7 @@ function refreshChartsTheme() {
   router.remountAll();
 }
 
-const PAGE_SHORTCUTS = { g: "overview", f: "fidcs", m: "macro", c: "clientes", r: "match", s: "credit" };
+const PAGE_SHORTCUTS = { g: "overview", f: "fidcs", r: "match", s: "credit" };
 
 function bindKeyboardShortcuts() {
   document.addEventListener("keydown", (ev) => {

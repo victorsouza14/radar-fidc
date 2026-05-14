@@ -68,9 +68,7 @@ a:hover { color: var(--accent-hover); }
 
 /* Utilities pontuais. */
 .tnum   { font-variant-numeric: tabular-nums; }
-.mono   { font-family: var(--font-mono); }
 .muted  { color: var(--fg-muted); }
-.subtle { color: var(--fg-subtle); }
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;

@@ -32,7 +32,6 @@ function renderKPIs() {
   const m = Store.macro();
   setText("kpi-selic", fmtPct(m.selic));
   setText("kpi-cenario", (m.cenario || "—").replace(/_/g, " "));
-  setText("footer-date", m.data_ref || "—");
 }
 
 // Indicadores macro informativos: exibidos como cards na visão geral

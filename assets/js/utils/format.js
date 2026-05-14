@@ -21,10 +21,6 @@ export function fmtInt(value) {
   return Number.isNaN(n) ? PLACEHOLDER : Math.round(n).toLocaleString("pt-BR");
 }
 
-export function fmtDate(value) {
-  return value ? String(value) : PLACEHOLDER;
-}
-
 export function truncate(text, max = 40, suffix = "…") {
   if (!text) return "";
   const s = String(text);

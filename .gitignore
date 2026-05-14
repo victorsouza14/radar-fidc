@@ -64,3 +64,4 @@ test-results/
 
 # Trust manifest output (gerado pelo pipeline; commitado lado-a-lado com data.json)
 # (NÃO ignorar data-quality.json — entra no git como artefato do build)
+.claude/
