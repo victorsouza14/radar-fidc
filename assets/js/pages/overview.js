@@ -1,12 +1,9 @@
 import { Store } from "../store.js";
 import { fmtInt, fmtPct, fmtNum, truncate, escapeHTML } from "../utils/format.js";
 import { setText } from "../utils/dom.js";
-import { riscoColor, riscoBadge, perfilColor } from "../theme.js";
+import { riscoColor, riscoBadge, perfilColor, RISCO_ORDER, PERFIL_ORDER } from "../theme.js";
 import { doughnut, horizontalBar } from "../components/chart-factory.js";
 import { renderTable } from "../components/table.js";
-
-const RISCO_ORDER  = ["BAIXO", "MEDIO", "ALTO"];
-const PERFIL_ORDER = ["CONSERVADOR", "MODERADO", "ARROJADO"];
 
 function renderKPIs() {
   const f = Store.fidcs.stats();
@@ -78,8 +75,9 @@ function renderDonuts() {
 }
 
 function selectTop10() {
-  // Mesmo threshold do backend para o ranking bater com o de outras telas.
-  const minMeses = Store.config().min_meses_historico ?? 6;
+  // O backend sempre emite min_meses_historico em config; isValid() em store.js
+  // rejeita payloads sem ele, então não precisamos de fallback aqui.
+  const minMeses = Store.config().min_meses_historico;
   return Store.fidcs.detalhe()
     .filter(f => f.risco !== "SEM DADOS" && f.retorno_anual > 0 && f.meses_historico >= minMeses)
     .sort((a, b) => b.retorno_aj_risco - a.retorno_aj_risco)

@@ -5,14 +5,21 @@ const DATA_URL = "data.json";
 let _data = null;
 
 function isValid(payload) {
-  return payload
+  // Type checks (Array.isArray, typeof number) — não basta truthy: array vazio
+  // é truthy, mas {} também é, e era considerado válido. Diferencia "shape
+  // mantida com 0 linhas" (válido) de "campo trocado por outro tipo" (inválido).
+  return (
+    payload
     && typeof payload === "object"
-    && payload.macro
-    && payload.fidcs?.detalhe
+    && payload.macro && typeof payload.macro === "object"
+    && payload.config && typeof payload.config.min_meses_historico === "number"
+    && Array.isArray(payload.fidcs?.detalhe)
     && payload.fidcs?.stats?.distribuicao
-    && payload.clientes?.lista
-    && payload.matches?.lista
-    && payload.credit?.empresas;
+    && Array.isArray(payload.clientes?.lista)
+    && Array.isArray(payload.matches?.lista)
+    && Array.isArray(payload.matches?.ranking_fundos)
+    && Array.isArray(payload.credit?.empresas)
+  );
 }
 
 export async function load() {
@@ -51,7 +58,7 @@ export const Store = {
 
   matches: {
     lista:         () => ensure().matches.lista,
-    rankingFundos: () => ensure().matches.ranking_fundos,
+    rankingFundos: () => ensure().matches.ranking_fundos ?? [],
     byCpf:         (cpf) => ensure().matches.lista.filter(m => m.cpf === cpf),
   },
 

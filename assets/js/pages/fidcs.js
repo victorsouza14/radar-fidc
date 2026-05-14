@@ -2,14 +2,11 @@ import { Store } from "../store.js";
 import { fmtNum, fmtPct, escapeHTML } from "../utils/format.js";
 import { setText, onInput, onChange, onClick, resetField, debounce } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
-import { riscoBadge, riscoColor, perfilColor } from "../theme.js";
+import { riscoBadge, riscoColor, perfilColor, RISCO_ORDER_FULL } from "../theme.js";
 import { scatterLogY } from "../components/chart-factory.js";
 import { createPaginatedTable } from "../components/paginated-table.js";
 
 let _mounted = false;
-
-// Ordem canônica das classes de risco no scatter (cada uma vira dataset).
-const RISCO_ORDER = ["BAIXO", "MEDIO", "ALTO", "SEM DADOS"];
 
 const state = { busca: "", risco: "", cota: "", perfil: "" };
 const stateKey = (s) => `${s.busca}|${s.risco}|${s.cota}|${s.perfil}`;
@@ -116,16 +113,16 @@ function renderScatter(filtered) {
   if (!_mounted) return;
   // Agrupa por risco — cada classe vira dataset distinto (legend separa).
   const buckets = Object.create(null);
-  for (const r of RISCO_ORDER) buckets[r] = [];
+  for (const r of RISCO_ORDER_FULL) buckets[r] = [];
   for (const f of filtered) {
-    const r = RISCO_ORDER.includes(f.risco) ? f.risco : "SEM DADOS";
+    const r = RISCO_ORDER_FULL.includes(f.risco) ? f.risco : "SEM DADOS";
     buckets[r].push({
       x: f.score_risco,
       y: f.retorno_anual,
       meta: { nome: f.fundo, cota: f.tipo_cota, vol: f.volatilidade, inad: f.taxa_inad },
     });
   }
-  const groups = RISCO_ORDER
+  const groups = RISCO_ORDER_FULL
     .filter(r => buckets[r].length > 0)
     .map(r => ({ label: r, color: riscoColor(r), points: buckets[r] }));
 

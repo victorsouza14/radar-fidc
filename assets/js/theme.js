@@ -1,5 +1,12 @@
 import { tokenColor } from "./ui.js";
 
+// Fonte única dos buckets categóricos do domínio. Importar daqui em vez de
+// redeclarar nas páginas evita drift (overview.js e fidcs.js tinham shapes
+// diferentes de RISCO_ORDER antes da centralização).
+export const RISCO_ORDER      = Object.freeze(["BAIXO", "MEDIO", "ALTO"]);
+export const RISCO_ORDER_FULL = Object.freeze([...RISCO_ORDER, "SEM DADOS"]);
+export const PERFIL_ORDER     = Object.freeze(["CONSERVADOR", "MODERADO", "ARROJADO"]);
+
 const RISCO_TOKEN = {
   BAIXO: "--data-positive",
   MEDIO: "--data-warning",

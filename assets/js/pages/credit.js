@@ -2,11 +2,9 @@ import { Store } from "../store.js";
 import { fmtInt, fmtNum, fmtPct, escapeHTML } from "../utils/format.js";
 import { setText, byId, onInput, onChange, onClick, resetField } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
-import { riscoColor, riscoBadge } from "../theme.js";
+import { riscoColor, riscoBadge, RISCO_ORDER } from "../theme.js";
 import { doughnut } from "../components/chart-factory.js";
 import { createPaginatedTable } from "../components/paginated-table.js";
-
-const RISCO_ORDER = ["BAIXO", "MEDIO", "ALTO"];
 
 // Filtros numéricos: `null` = inativo. Score/prob default só se aplicam a
 // empresas com `dados_suficientes=true` (score não é comparável quando
