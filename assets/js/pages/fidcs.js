@@ -2,11 +2,14 @@ import { Store } from "../store.js";
 import { fmtNum, fmtPct, escapeHTML } from "../utils/format.js";
 import { setText, onInput, onChange, onClick, resetField, debounce } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
-import { riscoBadge, perfilColor, cotaColor } from "../theme.js";
-import { pie } from "../components/chart-factory.js";
+import { riscoBadge, riscoColor, perfilColor } from "../theme.js";
+import { scatterLogY } from "../components/chart-factory.js";
 import { createPaginatedTable } from "../components/paginated-table.js";
 
 let _mounted = false;
+
+// Ordem canônica das classes de risco no scatter (cada uma vira dataset).
+const RISCO_ORDER = ["BAIXO", "MEDIO", "ALTO", "SEM DADOS"];
 
 const state = { busca: "", risco: "", cota: "", perfil: "" };
 const stateKey = (s) => `${s.busca}|${s.risco}|${s.cota}|${s.perfil}`;
@@ -63,24 +66,59 @@ function average(items, field) {
   return count ? sum / count : null;
 }
 
+function minMax(items, field) {
+  let min = null, max = null;
+  for (const it of items) {
+    const v = it[field];
+    if (typeof v !== "number" || Number.isNaN(v)) continue;
+    if (min == null || v < min) min = v;
+    if (max == null || v > max) max = v;
+  }
+  return { min, max };
+}
+
 function renderStats(filtered) {
   const fmt = (v, d = 2) => v == null ? "—" : v.toFixed(d);
-  setText("fidcs-stat-retorno", fmt(average(filtered, "retorno_anual")));
+  const { min, max } = minMax(filtered, "retorno_anual");
+  setText("fidcs-stat-retorno-max", fmt(max));
+  setText("fidcs-stat-retorno-min", fmt(min));
   setText("fidcs-stat-vol",     fmt(average(filtered, "volatilidade")));
   setText("fidcs-stat-inad",    fmt(average(filtered, "taxa_inad")));
   setText("fidcs-stat-score",   fmt(average(filtered, "score_risco"), 1));
 }
 
-function renderPieCotas(filtered) {
-  const count = Object.create(null);
-  for (const f of filtered) count[f.tipo_cota] = (count[f.tipo_cota] || 0) + 1;
-  const keys = Object.keys(count);
-  pie("chart-cota", keys, keys.map(k => count[k]), keys.map(cotaColor));
+function renderScatter(filtered) {
+  if (!_mounted) return;
+  // Agrupa por risco — cada classe vira dataset distinto (legend separa).
+  const buckets = Object.create(null);
+  for (const r of RISCO_ORDER) buckets[r] = [];
+  for (const f of filtered) {
+    const r = RISCO_ORDER.includes(f.risco) ? f.risco : "SEM DADOS";
+    buckets[r].push({
+      x: f.score_risco,
+      y: f.retorno_anual,
+      meta: { nome: f.fundo, cota: f.tipo_cota, vol: f.volatilidade, inad: f.taxa_inad },
+    });
+  }
+  const groups = RISCO_ORDER
+    .filter(r => buckets[r].length > 0)
+    .map(r => ({ label: r, color: riscoColor(r), points: buckets[r] }));
+
+  scatterLogY({
+    id: "chart-fidcs-scatter",
+    groups,
+    xLabel: "Score risco (0-100)",
+    yLabel: "Retorno a.a. (%) — escala log",
+    tooltipLabel: (p) => {
+      const m = p.meta || {};
+      return ` ${m.nome ?? ""} — risco ${p.x?.toFixed?.(1)} · retorno ${p.y?.toFixed?.(2)}%`;
+    },
+  });
 }
 
 const scheduleChart = debounce((filtered) => {
   if (!_mounted) return;
-  requestAnimationFrame(() => renderPieCotas(filtered));
+  requestAnimationFrame(() => renderScatter(filtered));
 }, 120);
 
 function onStateChange() {
@@ -112,5 +150,5 @@ export function init() {
 
 export function mount() {
   _mounted = true;
-  renderPieCotas(applyFilters(state));
+  renderScatter(applyFilters(state));
 }

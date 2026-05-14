@@ -341,8 +341,13 @@
             <div class="card-subtitle">Médias agregadas sobre os fundos filtrados.</div>
             <div class="stats-grid">
               <div class="stat-block">
-                <div class="stat-label">Retorno médio</div>
-                <div class="stat-value tnum" id="fidcs-stat-retorno">—</div>
+                <div class="stat-label">Retorno máximo</div>
+                <div class="stat-value tnum" id="fidcs-stat-retorno-max">—</div>
+                <div class="stat-unit">% ao ano</div>
+              </div>
+              <div class="stat-block">
+                <div class="stat-label">Retorno mínimo</div>
+                <div class="stat-value tnum" id="fidcs-stat-retorno-min">—</div>
                 <div class="stat-unit">% ao ano</div>
               </div>
               <div class="stat-block">
@@ -363,8 +368,9 @@
             </div>
           </div>
           <div class="card">
-            <div class="card-title"><svg><use href="#icon-pie"/></svg> Distribuição por tipo de cota</div>
-            <div class="chart-container tall"><canvas id="chart-cota"></canvas></div>
+            <div class="card-title"><svg><use href="#icon-activity"/></svg> Risco × Retorno (escala log)</div>
+            <div class="card-subtitle">Distribuição dos FIDCs filtrados. Y em log para domar outliers de retorno.</div>
+            <div class="chart-container tall"><canvas id="chart-fidcs-scatter"></canvas></div>
           </div>
         </div>
 

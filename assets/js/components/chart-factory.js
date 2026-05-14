@@ -106,3 +106,53 @@ export function verticalBar(id, labels, data, colors, valueFormatter) {
   return bar({ id, labels, data, colors, tooltip: ctx => ` ${valueFormatter(ctx.raw, ctx)}` });
 }
 
+
+/**
+ * Scatter (pontos) com eixo Y logarítmico — domina outliers de retorno
+ * (alguns FIDCs com retorno >100% deformam escala linear).
+ *
+ * `groups` é um array de `{ label, color, points: [{x, y, meta}], ... }`.
+ * Cada grupo vira um dataset (legend acende/apaga independentemente).
+ *
+ * Pontos com `y <= 0` são descartados silenciosamente (log não aceita).
+ * `tooltipLabel(point)` deve devolver string formatada por ponto.
+ */
+export function scatterLogY({ id, groups, xLabel, yLabel, tooltipLabel }) {
+  const datasets = groups.map(g => ({
+    label: g.label,
+    data: g.points.filter(p => p.y > 0),
+    backgroundColor: g.color,
+    borderColor: g.color,
+    pointRadius: 3.5,
+    pointHoverRadius: 6,
+  }));
+
+  return render(id, {
+    type: "scatter",
+    data: { datasets },
+    options: {
+      plugins: {
+        legend: { position: "bottom", labels: { padding: 14, usePointStyle: true } },
+        tooltip: {
+          callbacks: {
+            label: ctx => tooltipLabel ? tooltipLabel(ctx.raw) : ` ${ctx.raw.y}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: !!xLabel, text: xLabel, color: tickColor() },
+          grid: { color: gridColor() },
+          ticks: { color: tickColor() },
+        },
+        y: {
+          type: "logarithmic",
+          title: { display: !!yLabel, text: yLabel, color: tickColor() },
+          grid: { color: gridColor() },
+          ticks: { color: tickColor() },
+        },
+      },
+    },
+  });
+}
+
