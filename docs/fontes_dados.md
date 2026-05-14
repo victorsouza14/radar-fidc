@@ -68,7 +68,7 @@ serie_historica_fidc:
 ## Arquitetura de Armazenamento
 
 ```
-ADLS Gen2 — stdatatalake2026
+ADLS Gen2 — dfdatalakesprint
 │
 ├── bronze/
 │   ├── anbima/

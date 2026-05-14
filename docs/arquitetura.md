@@ -22,7 +22,7 @@ O Radar FIDC segue a **arquitetura Medallion** (Bronze → Silver → Gold), pad
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│           AZURE DATA LAKE STORAGE Gen2 (stdatatalake2026)           │
+│         AZURE DATA LAKE STORAGE Gen2 (dfdatalakesprint)             │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │  🥉 BRONZE — Dados Brutos (CSV)                             │   │
@@ -73,9 +73,10 @@ O Radar FIDC segue a **arquitetura Medallion** (Bronze → Silver → Gold), pad
 - **Notebooks**: 9 notebooks organizados em 3 camadas
 
 ### Azure Data Lake Storage Gen2
-- **Conta**: `stdatatalake2026`
+- **Conta**: `dfdatalakesprint`
 - **Containers**: `bronze`, `silver`, `gold`
 - **Formato**: CSV (Bronze) → Parquet (Silver/Gold) → CSV (Gold/powerbi)
+- **Prefixo de outputs analíticos**: `gold/final/` (consumido pelo `generate_dashboard_data.py`)
 
 ## Fluxo de Execução
 

@@ -92,9 +92,9 @@ Detalhe: [docs/arquitetura.md](docs/arquitetura.md)
 O dashboard é **estático no GitHub Pages**, mas atualizado automaticamente:
 
 1. **6h UTC** — Azure Data Factory dispara a pipeline Databricks.
-2. Notebooks Bronze → Silver → Gold geram parquets e CSVs em `stdatatalake2026/gold/powerbi/`.
-3. **9h UTC** — `.github/workflows/update-dashboard.yml` (cron) executa
-   `scripts/generate_dashboard_data.py`, que lê os CSVs do ADLS, gera o `data.json` e
+2. Notebooks Bronze → Silver → Gold geram parquets e CSVs em `dfdatalakesprint/gold/final/`.
+3. **9h UTC** — `.github/workflows/data-refresh.yml` (cron) executa
+   `scripts/generate_dashboard_data.py`, que lê os arquivos do ADLS Gen2 (`gold/final/`), gera o `data.json` e
    commita no repositório se houve mudança.
 4. GitHub Pages publica a nova versão automaticamente.
 
@@ -113,10 +113,10 @@ radar-fidc/
 ├── requirements.txt                    # Dependências Python
 │
 ├── .github/workflows/
-│   └── update-dashboard.yml            # GitHub Action de atualização diária
+│   └── data-refresh.yml                # GitHub Action de atualização diária (lê ADLS → data.json)
 │
 ├── scripts/
-│   └── generate_dashboard_data.py      # ADLS Gold CSV → data.json
+│   └── generate_dashboard_data.py      # ADLS gold/final/ → data.json
 │
 ├── notebooks/
 │   ├── _common.py                      # Helper compartilhado (secrets)
@@ -154,7 +154,7 @@ radar-fidc/
 ### Pré-requisitos
 
 - Python 3.10+
-- Acesso ao ADLS Gen2 (`stdatatalake2026`) — connection string
+- Acesso ao ADLS Gen2 (`dfdatalakesprint`) — connection string (rotacionada trimestralmente)
 - Credenciais ANBIMA (Client ID / Secret) — se for rodar a ingestão
 - Workspace Databricks — para executar os notebooks em produção
 
@@ -189,12 +189,18 @@ entre Databricks Secret Scope (`scope=escopo`, `key=AZURECONNSTRING`) e `os.envi
 ### 4. Atualizar o dashboard localmente
 
 ```bash
-# Gera data.json a partir da Gold no ADLS
-python scripts/generate_dashboard_data.py --source azure
+# Carrega .env (precisa AZURE_CONNECTION_STRING válida para dfdatalakesprint)
+set -a && source .env && set +a
 
-# Ou a partir de uma pasta local com os CSVs do gold/powerbi
-python scripts/generate_dashboard_data.py --source local --input ./data_local
+# Gera data.json lendo direto do ADLS
+python scripts/generate_dashboard_data.py
+
+# Saída customizada (útil para diff)
+python scripts/generate_dashboard_data.py --output /tmp/data.json
 ```
+
+O cache local em `.cache/` (ignorado pelo Git) acelera execuções subsequentes
+via validação de ETag — só re-baixa arquivo que mudou no Gold.
 
 ### 5. Servir o dashboard
 
@@ -223,7 +229,7 @@ python -m http.server 8000
 
 ### Tratamento de PII
 
-O dataset `data_real/clientes.csv` contém dados de teste/acadêmicos com nomes
+O dataset `clientes.csv` (em `gold/final/clientes.csv` no ADLS) contém dados de teste/acadêmicos com nomes
 fictícios. Mesmo assim, **todos os campos PII** (CPF, e-mail, telefone, nome
 completo) são **mascarados** antes de chegarem ao `data.json` público:
 
