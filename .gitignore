@@ -48,3 +48,19 @@ data_real/
 # Logs
 *.log
 logs/
+
+# Test / coverage / type-check artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node (Playwright)
+node_modules/
+playwright-report/
+test-results/
+
+# Trust manifest output (gerado pelo pipeline; commitado lado-a-lado com data.json)
+# (NÃO ignorar data-quality.json — entra no git como artefato do build)
