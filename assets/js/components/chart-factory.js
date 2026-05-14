@@ -69,7 +69,19 @@ export function pie(id, labels, values, colors) {
 
 function bar({ id, labels, data, colors, tooltip, horizontal = false }) {
   const valueAxis = { grid: { color: gridColor(), drawTicks: false }, ticks: { color: tickColor() } };
-  const labelAxis = { grid: { display: false }, ticks: { color: tickColor(), font: { size: 11 } } };
+  const labelAxis = {
+    grid: { display: false },
+    ticks: {
+      color: tickColor(),
+      font: { size: 11 },
+      padding: 10,
+      // horizontal: força mostrar todos os labels (top-10 não pode pular nomes);
+      // vertical: deixa o Chart.js skipar se não couber (shortened labels já
+      // ajudam, mas evita atropelo em viewports muito estreitas).
+      crossAlign: horizontal ? "far" : "center",
+      autoSkip: !horizontal,
+    },
+  };
   if (horizontal) valueAxis.ticks.callback = v => `${v}%`;
 
   return render(id, {
@@ -91,41 +103,6 @@ export function horizontalBar(id, labels, data, colors, tooltipLabel) {
 }
 
 export function verticalBar(id, labels, data, colors, valueFormatter) {
-  return bar({ id, labels, data, colors, tooltip: ctx => ` ${valueFormatter(ctx.raw)}` });
+  return bar({ id, labels, data, colors, tooltip: ctx => ` ${valueFormatter(ctx.raw, ctx)}` });
 }
 
-export function scatter(id, points, colorFn, tooltipFn) {
-  const data = new Array(points.length);
-  const colors = new Array(points.length);
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    data[i] = { x: p.x, y: p.y, _meta: p };
-    colors[i] = colorFn(p) + "e0";
-  }
-  return render(id, {
-    type: "scatter",
-    data: { datasets: [{ data, backgroundColor: colors, pointRadius: 3.5, pointHoverRadius: 6 }] },
-    options: {
-      parsing: false,
-      animation: false,
-      plugins: {
-        legend: { display: false },
-        decimation: { enabled: true, algorithm: "min-max" },
-        tooltip: { callbacks: { label: ctx => tooltipFn(ctx.raw._meta) } },
-      },
-      scales: {
-        x: {
-          title: { display: true, text: "Score de risco", color: tickColor() },
-          grid: { color: gridColor(), drawTicks: false },
-          ticks: { color: tickColor() },
-          min: 0, max: 100,
-        },
-        y: {
-          title: { display: true, text: "Retorno anual (%)", color: tickColor() },
-          grid: { color: gridColor(), drawTicks: false },
-          ticks: { color: tickColor(), callback: v => `${v}%` },
-        },
-      },
-    },
-  });
-}

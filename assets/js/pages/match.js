@@ -21,17 +21,17 @@ const applyFilters = memoize((s) => {
 
 function clientHeaderTpl(c) {
   return `
-    <div class="card" style="margin-bottom:24px">
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-        <div style="flex:1;min-width:240px">
-          <div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-subtle);font-weight:600">Cliente selecionado</div>
-          <div style="font-size:1.5rem;font-weight:700;color:var(--fg);margin-top:4px">${escapeHTML(c.nome)}</div>
-          <div style="font-size:0.85rem;color:var(--fg-subtle);margin-top:4px">${c.idade} anos · ${escapeHTML(c.email)}</div>
+    <div class="card client-header-card">
+      <div class="client-header">
+        <div class="client-info">
+          <div class="client-header-label">Cliente selecionado</div>
+          <div class="client-name">${escapeHTML(c.nome)}</div>
+          <div class="client-meta">${c.idade} anos · ${escapeHTML(c.email)}</div>
         </div>
-        <div style="text-align:right">
-          <div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-subtle);font-weight:600">Perfil suitability</div>
-          <div style="font-size:1.4rem;font-weight:800;color:${perfilColor(c.perfil)};margin-top:4px">${escapeHTML(c.perfil)}</div>
-          <div style="font-size:0.85rem;color:var(--fg-subtle)">Score ${fmtNum(c.score_perfil)}</div>
+        <div class="client-suitability">
+          <div class="client-header-label">Perfil suitability</div>
+          <div class="client-perfil" style="color:${perfilColor(c.perfil)}">${escapeHTML(c.perfil)}</div>
+          <div class="client-meta">Score ${fmtNum(c.score_perfil)}</div>
         </div>
       </div>
     </div>`;

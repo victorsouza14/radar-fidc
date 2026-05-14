@@ -298,7 +298,7 @@
 .app[data-sidebar="collapsed"] .sidebar-brand { justify-content: center; padding: var(--s-4) 0; }
 
 /* Tooltip flutuante posicionado via JS (escapa overflow). */
-.tooltip {
+.tooltip-hover {
   position: fixed;
   background: var(--bg-elev-3);
   color: var(--fg);
@@ -489,7 +489,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
-  z-index: var(--z-overlay);
+  z-index: var(--z-backdrop);
   opacity: 0;
   transition: opacity var(--t-base);
 }
@@ -504,7 +504,7 @@
   .sidebar {
     position: fixed;
     left: 0; top: 0;
-    width: var(--sidebar-w);
+    width: min(var(--sidebar-w), 86vw);
     transform: translateX(-100%);
     transition: transform var(--t-base);
     z-index: var(--z-drawer);
@@ -515,6 +515,29 @@
   .app[data-sidebar="collapsed"] { grid-template-columns: 1fr; }
   .app[data-sidebar="collapsed"] .sidebar { transform: translateX(-100%); }
 
-  .topbar { padding: 0 var(--s-4); }
+  .topbar { padding: 0 var(--s-4); gap: var(--s-3); }
   .content { padding: var(--s-5) var(--s-4) var(--s-10); }
+
+  .footer { padding: var(--s-4); flex-direction: column; gap: var(--s-1); text-align: center; }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-2);
+    margin-bottom: var(--s-5);
+    padding-bottom: var(--s-4);
+  }
+  .page-title    { font-size: var(--fs-lg); }
+  .page-subtitle { font-size: var(--fs-xs); }
+}
+
+@media (max-width: 640px) {
+  /* Breadcrumb: oculta o prefixo da marca; deixa só a página atual. */
+  .topbar-breadcrumb .muted,
+  .topbar-breadcrumb svg { display: none; }
+  .topbar-breadcrumb strong { font-size: var(--fs-sm); }
+
+  .content { padding: var(--s-4) var(--s-3) var(--s-8); }
+
+  .section-title { font-size: var(--fs-sm); }
 }

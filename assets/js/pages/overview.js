@@ -37,7 +37,7 @@ function renderKPIs() {
 
 const rankingRow = (r) => `
   <tr>
-    <td style="font-weight:500">${escapeHTML(r.fundo)}</td>
+    <td class="cell-truncate" title="${escapeHTML(r.fundo)}">${escapeHTML(r.fundo)}</td>
     <td>${escapeHTML(r.tipo_cota)}</td>
     <td><span class="badge ${riscoBadge(r.risco)}">${escapeHTML(r.risco)}</span></td>
     <td>${fmtPct(r.retorno_anual)}</td>
@@ -75,9 +75,11 @@ function selectTop10() {
 
 function renderTop10() {
   const top = selectTop10();
+  // Truncate em 28 — Chart.js apertaria em viewports estreitos. 28 chars
+  // cabe em ~150px @ 11px font, suficiente pro chart no mobile.
   horizontalBar(
     "chart-top10",
-    top.map(t => truncate(t.fundo, 40)),
+    top.map(t => truncate(t.fundo, 28)),
     top.map(t => t.retorno_anual),
     top.map(t => riscoColor(t.risco)),
     ctx => {

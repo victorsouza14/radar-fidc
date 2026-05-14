@@ -31,7 +31,6 @@
 /* Chart container — altura fixa para Chart.js medir. */
 .chart-container       { position: relative; height: 280px; }
 .chart-container.tall  { height: 360px; }
-.chart-container.xtall { height: 420px; }
 
 /* ─── KPI CARDS ───────────────────────────────────────────────── */
 .kpi-grid {
@@ -480,6 +479,39 @@ tbody td.cell-truncate {
 .btn-ghost { background: transparent; border-color: transparent; color: var(--fg-muted); }
 .btn-ghost:hover { background: var(--bg-elev-2); color: var(--fg); border-color: transparent; }
 
+.client-header-card { margin-bottom: var(--s-6); }
+.client-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+}
+.client-info        { flex: 1; min-width: 240px; }
+.client-suitability { text-align: right; }
+.client-header-label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-subtle);
+  font-weight: 600;
+}
+.client-name {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--fg);
+  margin-top: var(--s-1);
+}
+.client-perfil {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-top: var(--s-1);
+}
+.client-meta {
+  font-size: var(--fs-sm);
+  color: var(--fg-subtle);
+  margin-top: var(--s-1);
+}
+
 /* ─── MATCH / PME CARDS ──────────────────────────────────────── */
 .pme-grid {
   display: grid;
@@ -664,4 +696,84 @@ tbody td.cell-truncate {
   letter-spacing: 0.06em;
   color: var(--fg-subtle);
   font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .card          { padding: var(--s-4); }
+  .card-compact  { padding: var(--s-3); }
+  .card-title    { font-size: var(--fs-sm); margin-bottom: var(--s-4); }
+  .card-subtitle { margin-bottom: var(--s-3); }
+
+  .kpi-grid    { gap: var(--s-3); }
+  .kpi-card    { padding: var(--s-4); }
+  .kpi-value   { font-size: var(--fs-xl); }
+
+  .macro-grid  { gap: var(--s-3); }
+  .macro-card  { padding: var(--s-4); }
+  .macro-value { font-size: var(--fs-xl); }
+
+  .stat-block { padding: var(--s-3); }
+  .stat-value { font-size: var(--fs-lg); }
+
+  /* Filtros empilhados verticalmente — cada controle full-width. */
+  .filter-row              { flex-direction: column; align-items: stretch; gap: var(--s-2); }
+  .filter-row > *          { width: 100%; min-width: 0; }
+  .input, .select, .btn,
+  .select-btn              { height: 40px; }
+  .input-icon              { flex: 1 1 auto; }
+  .select-wrap             { min-width: 0; width: 100%; }
+
+  /* Paginação em duas linhas: info acima, controles centralizados abaixo. */
+  .pagination          { flex-direction: column; align-items: stretch; gap: var(--s-3); }
+  .pagination-info     { text-align: center; }
+  .pagination-controls { justify-content: center; }
+  .pagination-page     { min-width: 0; flex: 1; }
+
+  /* Tabelas mais densas e ellipsis mais agressivo (viewport estreita). */
+  thead th, tbody td { padding: 10px 6px; font-size: var(--fs-xs); }
+  thead th { letter-spacing: 0.04em; }
+  tbody td.cell-truncate { max-width: 140px; }
+  tbody tr { height: 40px; }
+
+  /* Bleed do table-wrap precisa bater com o padding mobile do card
+     (var(--s-4)) — não com o padding desktop (var(--s-6)). Sem isso
+     a tabela estoura horizontalmente além das bordas do card. */
+  .table-wrap {
+    margin: 0 calc(var(--s-4) * -1);
+    padding: 0 var(--s-4);
+  }
+
+  /* Charts: donuts/pies menores; horizontal bar precisa de altura
+     pra 10 labels caberem sem atropelar uns aos outros. */
+  .chart-container       { height: 240px; }
+  .chart-container.tall  { height: 380px; }
+
+  /* Match: pme-grid em 1 coluna (já é via auto-fit; força aqui pra segurança). */
+  .pme-grid     { grid-template-columns: 1fr; gap: var(--s-3); }
+  .pme-card     { padding: var(--s-4); }
+  .pme-nome     { min-height: 0; }
+
+  /* Client header empilha vertical no mobile; remove alinhamento à direita. */
+  .client-header     { gap: var(--s-4); }
+  .client-suitability { text-align: left; width: 100%; }
+  .client-name       { font-size: var(--fs-lg); }
+  .client-perfil     { font-size: var(--fs-md); }
+
+  /* Model info card: label/value empilhados. */
+  .model-info .row { grid-template-columns: 1fr; gap: var(--s-1); }
+
+  /* Tooltip JS-flutuante da sidebar é hover-based — mobile usa touch,
+     então não dispara útil. Esconde só o nosso (.tooltip-hover), não
+     mata uma classe .tooltip genérica que possa aparecer em outro lugar. */
+  .tooltip-hover { display: none; }
+
+  /* Theme menu colapsado encosta na borda esquerda em vez de empurrar pra fora. */
+  .app[data-sidebar="collapsed"] .theme-menu { left: 0; bottom: calc(100% + 6px); }
+}
+
+@media (max-width: 480px) {
+  .kpi-grid, .macro-grid { grid-template-columns: 1fr; }
+  .stats-grid            { grid-template-columns: 1fr; }
+  .kpi-value, .macro-value, .stat-value { font-size: var(--fs-lg); }
+  tbody td.cell-truncate { max-width: 130px; }
 }

@@ -90,14 +90,16 @@
   --t-base:   200ms cubic-bezier(0.16, 1, 0.3, 1);
   --t-slow:   320ms cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Z-index. */
-  --z-sticky:   10;
-  --z-sidebar:  20;
-  --z-topbar:   25;
-  --z-drawer:   30;
-  --z-overlay:  40;
-  --z-modal:    50;
-  --z-toast:    60;
+  /* Z-index. Backdrop fica entre topbar e drawer — clique no nav passa
+     pro botão; só área FORA da sidebar captura o tap do backdrop. */
+  --z-sticky:    10;
+  --z-sidebar:   20;
+  --z-topbar:    25;
+  --z-backdrop:  28;
+  --z-drawer:    30;
+  --z-overlay:   40;
+  --z-modal:     50;
+  --z-toast:     60;
 }
 
 /* ─────────────────────────────────────────────────────────────────
