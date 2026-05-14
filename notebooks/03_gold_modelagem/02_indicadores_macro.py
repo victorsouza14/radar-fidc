@@ -9,7 +9,7 @@
 import io
 import os
 import sys
-from datetime import datetime
+from datetime import date, datetime
 
 import pandas as pd
 from azure.storage.blob import BlobServiceClient
@@ -22,6 +22,11 @@ CONNECTION_STRING = azure_connection_string()
 blob_svc = BlobServiceClient.from_connection_string(CONNECTION_STRING)
 silver = blob_svc.get_container_client("silver")
 gold = blob_svc.get_container_client("gold")
+
+# Janela máxima de "frescor" da pesquisa Focus que aceitamos como fonte primária.
+# Acima disso, caímos para heurística (mais transparente que projeção velha).
+FOCUS_FRESHNESS_MAX_DAYS = 14
+FOCUS_SILVER_PATH = "focus/projecoes_anuais.parquet"
 
 # Fallback usado APENAS se a Silver estiver indisponível (não para mascarar erro).
 FALLBACK = {
@@ -72,17 +77,120 @@ def soma_ultimos_12(df, keywords):
     return None
 
 
+def carregar_focus_silver(silver_client, caminho: str) -> pd.DataFrame:
+    """Lê silver/focus/projecoes_anuais.parquet; devolve DataFrame vazio se ausente."""
+    try:
+        data = silver_client.get_blob_client(caminho).download_blob().readall()
+        df = pd.read_parquet(io.BytesIO(data))
+        print(f"Focus Silver lido: {len(df)} projecoes")
+        return df
+    except Exception as e:
+        print(f"Focus Silver ausente/erro ({e}). Fallback para heurística.")
+        return pd.DataFrame()
+
+
+def focus_para_indicadores(
+    df_focus: pd.DataFrame,
+    anos_alvo: tuple[int, int],
+    max_age_days: int = FOCUS_FRESHNESS_MAX_DAYS,
+) -> dict | None:
+    """Extrai (selic_proj, ipca_proj, data_pesquisa) do parquet Silver.
+
+    Retorna None se: vazio, sem cobertura mínima dos anos alvo, ou stale.
+    Critério de stale: a pesquisa mais antiga entre as usadas tem >max_age_days.
+    """
+    if df_focus.empty:
+        return None
+    requeridos = {"Indicador", "DataReferencia", "Mediana", "DataPesquisa"}
+    if not requeridos.issubset(df_focus.columns):
+        print(f"Focus Silver com schema inesperado: {set(df_focus.columns)}")
+        return None
+    df = df_focus.copy()
+    df["DataReferencia"] = df["DataReferencia"].astype(int)
+    df["DataPesquisa"] = pd.to_datetime(df["DataPesquisa"], errors="coerce").dt.date
+
+    out: dict = {"proj_source": "bcb_focus_top5"}
+    datas_pesquisa = []
+    ano_atual, ano_proximo = anos_alvo
+
+    for indicador, key_atual, key_prox in (
+        ("Selic", "selic_proj_atual", "selic_proj_proximo"),
+        ("IPCA", "ipca_proj_atual", "ipca_proj_proximo"),
+    ):
+        sub = df[df["Indicador"] == indicador]
+        if sub.empty:
+            print(f"Focus sem indicador {indicador}; cai para heurística.")
+            return None
+        for ano, k in ((ano_atual, key_atual), (ano_proximo, key_prox)):
+            linha = sub[sub["DataReferencia"] == ano]
+            if linha.empty:
+                print(f"Focus sem projecao {indicador}/{ano}; cai para heurística.")
+                return None
+            out[k] = round(float(linha["Mediana"].iloc[0]), 2)
+            datas_pesquisa.append(linha["DataPesquisa"].iloc[0])
+
+    pesquisa_mais_antiga = min(datas_pesquisa)
+    idade = (date.today() - pesquisa_mais_antiga).days
+    if idade > max_age_days:
+        print(
+            f"Focus stale: pesquisa mais antiga {pesquisa_mais_antiga} "
+            f"({idade}d > {max_age_days}d). Cai para heurística."
+        )
+        return None
+
+    out["proj_date"] = max(datas_pesquisa).isoformat()
+    out["proj_pesquisa_mais_antiga"] = pesquisa_mais_antiga.isoformat()
+    return out
+
+
+# COMMAND ----------
+
 ind = dict(FALLBACK)
+ind["is_proj_heuristica"] = True
+ind["proj_source"] = "heuristica_local"
 
 if not df_macro.empty:
     ind["selic_atual"] = ultimo_valor(df_macro, ["selic_meta", "selic"])
     ind["cdi_atual"] = ultimo_valor(df_macro, ["cdi"])
     ind["ipca_12m"] = soma_ultimos_12(df_macro, ["ipca"])
-    # Sem fonte Focus diretamente: aproximação selic_projetada = selic_atual - 50bps
+    # Heurística (default) — substituída adiante por Focus se disponível e fresh.
     if ind["selic_atual"] is not None:
         ind["selic_projetada_12m"] = round(ind["selic_atual"] - 0.5, 2)
     if ind["ipca_12m"] is not None:
         ind["ipca_projetado_12m"] = round(ind["ipca_12m"] * 0.9, 2)
+
+# Tenta substituir as projeções heurísticas pelas oficiais do BCB Focus.
+df_focus = carregar_focus_silver(silver, FOCUS_SILVER_PATH)
+ano_atual = date.today().year
+anos_alvo = (ano_atual, ano_atual + 1)
+focus = focus_para_indicadores(df_focus, anos_alvo)
+if focus is not None:
+    # Override: ano corrente fica em `selic_projetada_12m`/`ipca_projetado_12m` (compat com Gold antigo);
+    # próximo ano vai em campos extras para o frontend exibir o cenário 2027.
+    ind["selic_projetada_12m"] = focus["selic_proj_atual"]
+    ind["ipca_projetado_12m"] = focus["ipca_proj_atual"]
+    ind[f"selic_proj_{ano_atual}"] = focus["selic_proj_atual"]
+    ind[f"selic_proj_{ano_atual + 1}"] = focus["selic_proj_proximo"]
+    ind[f"ipca_proj_{ano_atual}"] = focus["ipca_proj_atual"]
+    ind[f"ipca_proj_{ano_atual + 1}"] = focus["ipca_proj_proximo"]
+    ind["proj_source"] = focus["proj_source"]
+    ind["proj_date"] = focus["proj_date"]
+    ind["is_proj_heuristica"] = False
+    print(
+        f"Projecoes substituidas por BCB Focus (pesquisa {focus['proj_date']}); "
+        "is_proj_heuristica=False."
+    )
+else:
+    # Fallback explícito — útil pra auditar quando heurística ainda está em uso.
+    fallback_age = "n/a"
+    if df_focus is not None and not df_focus.empty:
+        try:
+            ultimas = pd.to_datetime(df_focus["DataPesquisa"], errors="coerce").dropna()
+            if not ultimas.empty:
+                fallback_age = f"{(datetime.now() - ultimas.max()).days}d"
+        except Exception:
+            pass
+    print(f"Usando projecoes heurísticas (Focus indisponivel/stale; idade={fallback_age}).")
 
 
 # Cenário macroeconômico

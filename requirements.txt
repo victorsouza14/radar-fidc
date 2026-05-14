@@ -12,8 +12,13 @@ pyarrow>=14.0.0
 numpy>=1.26.0
 openpyxl>=3.1.0
 
-# Data quality (preparação para Fase 2)
+# Data quality
+# - pandera: validação de schema lado consumidor (CI)
+# - great_expectations: suite de expectativas lado produtor (Databricks),
+#   utilizado pelo notebook 06_great_expectations.py para gatear promoção
+#   de gold/staging/ -> gold/final/.
 pandera>=0.18.0
+great_expectations>=0.18.0
 
 # HTTP / API
 requests>=2.31.0
