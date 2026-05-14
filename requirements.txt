@@ -1,30 +1,39 @@
 # Radar FIDC — Dependências Python
 # Instalar com: pip install -r requirements.txt
-# Python >= 3.10
+# Python >= 3.11
+#
+# Dependencies pinned to exact versions for supply-chain reproducibility.
+# Update procedure (one package at a time):
+#   1. pip install --upgrade <pkg>
+#   2. pip freeze | grep -i <pkg>     # copy the resolved version
+#   3. Update the `==` line below
+#   4. Run `pytest -q` + end-to-end smoke before committing
+# Hash-pinning (--hash=sha256:...) is a future improvement — requires pip-compile
+# / uv lockfile workflow which is a larger setup.
 
 # Azure Storage
-azure-storage-blob>=12.19.0
-azure-storage-file-datalake>=12.14.0
+azure-storage-blob==12.28.0
+azure-storage-file-datalake==12.23.0
 
 # Data processing
-pandas>=2.0.0
-pyarrow>=14.0.0
-numpy>=1.26.0
-openpyxl>=3.1.0
+pandas==3.0.3
+pyarrow==24.0.0
+numpy==2.4.4
+openpyxl==3.1.5
 
 # Data quality
 # - pandera: validação de schema lado consumidor (CI)
-# - great_expectations: suite de expectativas lado produtor (Databricks),
-#   utilizado pelo notebook 06_great_expectations.py para gatear promoção
-#   de gold/staging/ -> gold/final/.
-pandera>=0.18.0
-great_expectations>=0.18.0
+# NOTE: great_expectations é dependência DO NOTEBOOK Databricks (instalada via
+#   `%pip install` em notebooks/03_gold_modelagem/06_great_expectations.py)
+#   e NÃO faz parte do runtime CI/local. Mantida fora deste arquivo porque
+#   conflita com numpy>=2 — Databricks resolve isso isoladamente.
+pandera==0.31.1
 
 # HTTP / API
-requests>=2.31.0
+requests==2.34.1
 
 # Databricks (para execução local via REST API)
-databricks-sdk>=0.20.0
+databricks-sdk==0.108.0
 
 # Utilitários
-python-dotenv>=1.0.0
+python-dotenv==1.2.2

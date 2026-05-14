@@ -11,7 +11,7 @@ corrompido.
 
 Cache:
 - Bytes invalidados via ETag (zero egress quando cache local válido)
-- Parse cache em ``.parsed.pkl`` (skip do parse openpyxl que é lento)
+- Parse cache em ``.parsed.feather`` (skip do parse openpyxl que é lento)
 Implementado em ``lib.azure_io``.
 """
 

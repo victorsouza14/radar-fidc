@@ -1,7 +1,7 @@
 """Camada de acesso ao ADLS Gen2 com cache de duas camadas.
 
 - Camada 1 (byte cache): bytes brutos do blob em `.cache/<path>`, invalidados via ETag.
-- Camada 2 (parse cache): DataFrame serializado em `.cache/<path>.parsed.pkl`,
+- Camada 2 (parse cache): DataFrame serializado em `.cache/<path>.parsed.feather`,
   invalidado se o byte cache mudou.
 
 Lógica de cache:
@@ -9,7 +9,12 @@ Lógica de cache:
     2. Se existe `.cache/<path>.etag` igual ao remoto E o `.cache/<path>` existe:
        reusa bytes locais (zero egress)
     3. Senão, baixa, grava bytes + ETag
-    4. Para `read_csv`/`read_excel`: se existir `.parsed.pkl` válido, devolve direto
+    4. Para `read_csv`/`read_excel`: se existir `.parsed.feather` válido, devolve direto
+
+Formato do parse cache: **feather** (pyarrow). Substituiu pickle por motivos de
+segurança (CWE-502: pickle.loads em arquivo do disco é vetor de RCE se `.cache/`
+for compartilhado entre máquinas/zips/sync). Feather lê apenas tipos de dados —
+nenhum código é executado na deserialização.
 
 No CI o cache é vazio em cada run (proposital — garante leitura fresca).
 Localmente acelera de ~5s para <50ms por arquivo após primeiro run.
@@ -22,9 +27,9 @@ Erros:
 
 from __future__ import annotations
 
+import contextlib
 import io
 import os
-import pickle
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
@@ -82,7 +87,7 @@ def _etag_cache_path_for(remote_path: str) -> Path:
 
 
 def _parsed_cache_path_for(remote_path: str) -> Path:
-    return _CACHE_ROOT / f"{remote_path}.parsed.pkl"
+    return _CACHE_ROOT / f"{remote_path}.parsed.feather"
 
 
 def _read_etag_cached(remote_path: str) -> str | None:
@@ -148,8 +153,11 @@ def download_to_bytes(remote_path: str) -> bytes:
 
 
 # ─── Parse cache helpers ─────────────────────────────────────────────────
-def _try_parsed_cache(remote_path: str) -> Any | None:
-    """Devolve o objeto Python cacheado, se ETag bate com remoto."""
+# Cache só armazena DataFrames (feather é safe — não executa código na leitura).
+# Se algum dia precisar cachear outro tipo, NÃO voltar para pickle: usar JSON,
+# parquet ou outro formato declarativo.
+def _try_parsed_cache(remote_path: str) -> pd.DataFrame | None:
+    """Devolve o DataFrame cacheado, se ETag bate com remoto."""
     parsed = _parsed_cache_path_for(remote_path)
     if not parsed.exists():
         return None
@@ -162,17 +170,41 @@ def _try_parsed_cache(remote_path: str) -> Any | None:
     except (AzureAuthError, HttpResponseError):
         # Sem internet ou auth caiu: confiar no cache local.
         log.warn("parsed_cache_etag_check_failed", path=remote_path)
-        return pickle.loads(parsed.read_bytes())
+        return _read_feather_safe(parsed)
     if cached_etag != remote_etag:
         return None
     log.info("parsed_cache_hit", path=remote_path)
-    return pickle.loads(parsed.read_bytes())
+    return _read_feather_safe(parsed)
+
+
+def _read_feather_safe(parsed: Path) -> pd.DataFrame | None:
+    """Lê feather; se corromper (versão incompatível, file truncado, ArrowInvalid, etc.),
+    invalida o cache local em vez de quebrar o pipeline.
+
+    Catch amplo intencional: `pyarrow.lib.ArrowInvalid` herda de `Exception` direto,
+    e qualquer corrupção deve degradar para re-download, não para crash.
+    """
+    try:
+        return pd.read_feather(str(parsed))
+    except Exception as e:
+        log.warn("parsed_cache_read_failed_invalidating", path=str(parsed), error=str(e))
+        with contextlib.suppress(OSError):
+            parsed.unlink()
+        return None
 
 
 def _save_parsed_cache(remote_path: str, obj: Any) -> None:
+    # Feather só suporta DataFrames. Se vier outro tipo, falhar fast em vez de cair em pickle.
+    if not isinstance(obj, pd.DataFrame):
+        raise TypeError(
+            f"_save_parsed_cache só aceita DataFrame (recebeu {type(obj).__name__}). "
+            "Se precisar cachear outro tipo, use um formato seguro (JSON/parquet) — nunca pickle."
+        )
     parsed = _parsed_cache_path_for(remote_path)
     parsed.parent.mkdir(parents=True, exist_ok=True)
-    parsed.write_bytes(pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL))
+    # reset_index defensivo: feather requer RangeIndex; se vier MultiIndex/named index, preserva colunas.
+    df_to_save = obj if obj.index.name is None and not isinstance(obj.index, pd.MultiIndex) else obj.reset_index()
+    df_to_save.to_feather(str(parsed))
 
 
 # ─── Leitura tipada (com parse cache) ────────────────────────────────────

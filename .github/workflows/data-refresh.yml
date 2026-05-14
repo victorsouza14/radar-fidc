@@ -47,7 +47,9 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11   # v4.1.1
         with:
           fetch-depth: 2
-          persist-credentials: true
+          # Não persistir GITHUB_TOKEN em .git/config — restringe o blast radius.
+          # O step "Commit if changed" reinjeta o token escopado apenas durante o push.
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c   # v5.0.0
@@ -230,7 +232,12 @@ jobs:
           fi
           git add data.json data-quality.json docs/operacao.md docs/historico-runs.csv 2>/dev/null || true
           git commit -m "chore: Regenerate dashboard data + quality manifest ($(date -u +%Y-%m-%d))"
-          git push
+          # Token injetado só agora (checkout usou persist-credentials: false).
+          # x-access-token é o padrão GitHub para auth via GITHUB_TOKEN.
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:"${GITHUB_REF_NAME}"
+          # Limpa o token do remote logo após o push (defense-in-depth contra steps subsequentes).
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
 
       - name: Step summary
         if: always()

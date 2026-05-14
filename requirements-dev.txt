@@ -1,16 +1,19 @@
 # Radar FIDC — Dependências de desenvolvimento (CI + local)
 # Instalar com: pip install -r requirements-dev.txt
 # Não usado em runtime — só em PR/push checks e testes locais.
+#
+# Pinning policy: exact `==` versions for supply-chain reproducibility.
+# Update procedure: same as requirements.txt (see header there).
 
 -r requirements.txt
 
 # Testes
-pytest>=8.0.0
-pytest-mock>=3.12.0
-responses>=0.25.0           # mock de requests HTTP (azure SDK usa requests)
+pytest==9.0.3
+pytest-mock==3.15.1
+responses==0.26.0           # mock de requests HTTP (azure SDK usa requests)
 
 # Lint + format + types
-ruff>=0.4.10
-mypy>=1.10.0
-types-requests>=2.31.0
-pandas-stubs>=2.0.0
+ruff==0.15.13
+mypy==2.1.0
+types-requests==2.33.0.20260513
+pandas-stubs==3.0.0.260204
