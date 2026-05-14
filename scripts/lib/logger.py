@@ -12,16 +12,17 @@ Cada chamada emite UMA linha JSON em stdout, formato:
 Compatível com agregadores que aceitam stdout JSON Lines (GitHub Actions, Datadog, etc.).
 Não usa stdlib logging — keep it simple, fonte única, sem handlers herdados.
 """
+
 from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 class _StructuredLogger:

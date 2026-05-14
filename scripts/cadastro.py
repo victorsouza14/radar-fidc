@@ -1,27 +1,31 @@
-import pandas as pd
-import numpy as np
-import os
 import csv
+import os
 import pathlib
 import sys
 from datetime import datetime
 
+import numpy as np
+import pandas as pd
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DATA = ROOT / "data_real"
-RATING_PATH  = os.environ.get("RADAR_RATING",   str(DATA / "rating_fidc.xlsx"))
+RATING_PATH = os.environ.get("RADAR_RATING", str(DATA / "rating_fidc.xlsx"))
 CADASTRO_CSV = os.environ.get("RADAR_CLIENTES", str(DATA / "clientes.csv"))
 
 # ============================================================
 # HELPERS
 # ============================================================
 
+
 def separador(char="=", n=60):
     print(char * n)
+
 
 def titulo(txt):
     separador()
     print(f"  {txt}")
     separador()
+
 
 def pergunta_opcao(texto, opcoes):
     """Exibe pergunta com opções numeradas e retorna a escolha (1-based)."""
@@ -37,6 +41,7 @@ def pergunta_opcao(texto, opcoes):
             pass
         print(f"  Digite um numero entre 1 e {len(opcoes)}.")
 
+
 def pergunta_texto(texto, obrigatorio=True):
     while True:
         r = input(f"{texto}: ").strip()
@@ -44,14 +49,17 @@ def pergunta_texto(texto, obrigatorio=True):
             return r
         print("  Campo obrigatorio.")
 
+
 def pergunta_cpf():
     import re
+
     while True:
         cpf = input("  CPF (somente numeros): ").strip()
         cpf = re.sub(r"\D", "", cpf)
         if len(cpf) == 11:
             return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
         print("  CPF invalido. Digite 11 digitos.")
+
 
 # ============================================================
 # QUESTIONÁRIO DE PERFIL  (API - Adequação ao Perfil)
@@ -132,32 +140,23 @@ PERGUNTAS = [
 
 # Mapa de resposta → pontuação
 PONTOS = {
-    "objetivo":            {1: 1, 2: 2, 3: 3},
-    "horizonte":           {1: 1, 2: 2, 3: 3},
-    "reacao_queda":        {1: 1, 2: 2, 3: 3, 4: 4},
-    "experiencia":         {1: 1, 2: 2, 3: 3},
-    "renda":               {1: 1, 2: 2, 3: 3},
+    "objetivo": {1: 1, 2: 2, 3: 3},
+    "horizonte": {1: 1, 2: 2, 3: 3},
+    "reacao_queda": {1: 1, 2: 2, 3: 3, 4: 4},
+    "experiencia": {1: 1, 2: 2, 3: 3},
+    "renda": {1: 1, 2: 2, 3: 3},
     "percentual_patrimonio": {1: 1, 2: 2, 3: 3},
-    "reserva_emergencia":  {1: 1, 2: 3},
+    "reserva_emergencia": {1: 1, 2: 3},
 }
 
 # Pontuação máxima possível ponderada
-SCORE_MAX = sum(
-    max(PONTOS[p["id"]].values()) * p["peso"]
-    for p in PERGUNTAS
-)
-SCORE_MIN = sum(
-    min(PONTOS[p["id"]].values()) * p["peso"]
-    for p in PERGUNTAS
-)
+SCORE_MAX = sum(max(PONTOS[p["id"]].values()) * p["peso"] for p in PERGUNTAS)
+SCORE_MIN = sum(min(PONTOS[p["id"]].values()) * p["peso"] for p in PERGUNTAS)
 
 
 def calcular_perfil(respostas: dict) -> tuple[str, float]:
     """Retorna (perfil, score_0_100)."""
-    score_pond = sum(
-        PONTOS[p["id"]][respostas[p["id"]]] * p["peso"]
-        for p in PERGUNTAS
-    )
+    score_pond = sum(PONTOS[p["id"]][respostas[p["id"]]] * p["peso"] for p in PERGUNTAS)
     score_norm = (score_pond - SCORE_MIN) / (SCORE_MAX - SCORE_MIN) * 100
 
     if score_norm <= 33:
@@ -174,6 +173,7 @@ def calcular_perfil(respostas: dict) -> tuple[str, float]:
 # RECOMENDAÇÃO DE FIDCs
 # ============================================================
 
+
 def carregar_rating():
     if not os.path.exists(RATING_PATH):
         print(f"\n  [AVISO] Arquivo de rating nao encontrado: {RATING_PATH}")
@@ -189,8 +189,8 @@ def recomendar(perfil: str, df_rating: pd.DataFrame, top_n: int = 5) -> pd.DataF
     # Perfis aceitos por perfil do cliente
     perfis_aceitos = {
         "CONSERVADOR": ["CONSERVADOR"],
-        "MODERADO":    ["CONSERVADOR", "MODERADO"],
-        "ARROJADO":    ["CONSERVADOR", "MODERADO", "ARROJADO"],
+        "MODERADO": ["CONSERVADOR", "MODERADO"],
+        "ARROJADO": ["CONSERVADOR", "MODERADO", "ARROJADO"],
     }
 
     df = df[df["PERFIL_SUGERIDO"].isin(perfis_aceitos[perfil])]
@@ -198,8 +198,16 @@ def recomendar(perfil: str, df_rating: pd.DataFrame, top_n: int = 5) -> pd.DataF
     df = df[df["RETORNO_ANUAL"].notna() & (df["RETORNO_ANUAL"] > 0)]
     df = df.sort_values("RETORNO_AJ_RISCO", ascending=False)
 
-    cols = ["FUNDO", "TIPO_COTA", "RISCO", "RETORNO_ANUAL",
-            "VOLATILIDADE", "TAXA_INADIMPLENCIA", "SCORE_RISCO", "PERFIL_SUGERIDO"]
+    cols = [
+        "FUNDO",
+        "TIPO_COTA",
+        "RISCO",
+        "RETORNO_ANUAL",
+        "VOLATILIDADE",
+        "TAXA_INADIMPLENCIA",
+        "SCORE_RISCO",
+        "PERFIL_SUGERIDO",
+    ]
     cols_existentes = [c for c in cols if c in df.columns]
     return df[cols_existentes].drop_duplicates(subset=["FUNDO", "TIPO_COTA"]).head(top_n)
 
@@ -211,8 +219,8 @@ def imprimir_recomendacoes(perfil: str, nome_cliente: str, df_rec: pd.DataFrame)
 
     descricao_perfil = {
         "CONSERVADOR": "Fundos senoir com baixo risco de inadimplencia e carteiras bem diversificadas.",
-        "MODERADO":    "Fundos com equilibrio entre seguranca e rentabilidade, risco controlado.",
-        "ARROJADO":    "Fundos com maior potencial de retorno, aceitando exposicao a maior risco de credito.",
+        "MODERADO": "Fundos com equilibrio entre seguranca e rentabilidade, risco controlado.",
+        "ARROJADO": "Fundos com maior potencial de retorno, aceitando exposicao a maior risco de credito.",
     }
     print(f"  {descricao_perfil[perfil]}\n")
 
@@ -221,10 +229,10 @@ def imprimir_recomendacoes(perfil: str, nome_cliente: str, df_rec: pd.DataFrame)
         return
 
     for i, (_, row) in enumerate(df_rec.iterrows(), 1):
-        retorno = f"{row['RETORNO_ANUAL']:.1f}%" if pd.notna(row.get('RETORNO_ANUAL')) else "N/D"
-        volat   = f"{row['VOLATILIDADE']:.1f}%"  if pd.notna(row.get('VOLATILIDADE'))  else "N/D"
-        inad    = f"{row['TAXA_INADIMPLENCIA']:.1f}%" if pd.notna(row.get('TAXA_INADIMPLENCIA')) else "N/D"
-        score   = f"{row['SCORE_RISCO']:.0f}/100" if pd.notna(row.get('SCORE_RISCO')) else "N/D"
+        retorno = f"{row['RETORNO_ANUAL']:.1f}%" if pd.notna(row.get("RETORNO_ANUAL")) else "N/D"
+        volat = f"{row['VOLATILIDADE']:.1f}%" if pd.notna(row.get("VOLATILIDADE")) else "N/D"
+        inad = f"{row['TAXA_INADIMPLENCIA']:.1f}%" if pd.notna(row.get("TAXA_INADIMPLENCIA")) else "N/D"
+        score = f"{row['SCORE_RISCO']:.0f}/100" if pd.notna(row.get("SCORE_RISCO")) else "N/D"
 
         print(f"  [{i}] {row['FUNDO']}")
         print(f"      Cota: {row['TIPO_COTA']} | Risco: {row['RISCO']} | Score: {score}")
@@ -237,10 +245,21 @@ def imprimir_recomendacoes(perfil: str, nome_cliente: str, df_rec: pd.DataFrame)
 # ============================================================
 
 CABECALHO = [
-    "data_cadastro", "nome", "cpf", "email", "telefone", "idade",
-    "objetivo", "horizonte", "reacao_queda", "experiencia",
-    "renda", "percentual_patrimonio", "reserva_emergencia",
-    "perfil", "score_perfil",
+    "data_cadastro",
+    "nome",
+    "cpf",
+    "email",
+    "telefone",
+    "idade",
+    "objetivo",
+    "horizonte",
+    "reacao_queda",
+    "experiencia",
+    "renda",
+    "percentual_patrimonio",
+    "reserva_emergencia",
+    "perfil",
+    "score_perfil",
 ]
 
 
@@ -259,11 +278,26 @@ def salvar_cliente(dados: dict):
 # ============================================================
 
 NOMES_SIMULADOS = [
-    "Ana Lima", "Bruno Souza", "Carla Mendes", "Diego Ferreira",
-    "Elena Costa", "Felipe Rocha", "Gabriela Nunes", "Hugo Alves",
-    "Isabela Moura", "João Pinto", "Karen Vieira", "Lucas Barros",
-    "Marina Gomes", "Nelson Reis", "Olivia Campos", "Paulo Martins",
-    "Renata Farias", "Samuel Lopes", "Tânia Borges", "Victor Cunha",
+    "Ana Lima",
+    "Bruno Souza",
+    "Carla Mendes",
+    "Diego Ferreira",
+    "Elena Costa",
+    "Felipe Rocha",
+    "Gabriela Nunes",
+    "Hugo Alves",
+    "Isabela Moura",
+    "João Pinto",
+    "Karen Vieira",
+    "Lucas Barros",
+    "Marina Gomes",
+    "Nelson Reis",
+    "Olivia Campos",
+    "Paulo Martins",
+    "Renata Farias",
+    "Samuel Lopes",
+    "Tânia Borges",
+    "Victor Cunha",
 ]
 
 
@@ -277,13 +311,14 @@ def simular_clientes(n: int = 20, seed: int = 42):
 
         cliente = {
             "data_cadastro": datetime.now().strftime("%Y-%m-%d"),
-            "nome":          NOMES_SIMULADOS[i % len(NOMES_SIMULADOS)] + (f" {i//len(NOMES_SIMULADOS)+1}" if i >= len(NOMES_SIMULADOS) else ""),
-            "cpf":           f"{''.join([str(rng.integers(0,9)) for _ in range(11)][:11])}",
-            "email":         f"cliente{i+1}@email.com",
-            "telefone":      f"11{''.join([str(rng.integers(0,9)) for _ in range(9)])}",
-            "idade":         int(rng.integers(22, 70)),
-            "perfil":        perfil,
-            "score_perfil":  score,
+            "nome": NOMES_SIMULADOS[i % len(NOMES_SIMULADOS)]
+            + (f" {i // len(NOMES_SIMULADOS) + 1}" if i >= len(NOMES_SIMULADOS) else ""),
+            "cpf": f"{''.join([str(rng.integers(0, 9)) for _ in range(11)][:11])}",
+            "email": f"cliente{i + 1}@email.com",
+            "telefone": f"11{''.join([str(rng.integers(0, 9)) for _ in range(9)])}",
+            "idade": int(rng.integers(22, 70)),
+            "perfil": perfil,
+            "score_perfil": score,
             **respostas,
         }
         clientes.append(cliente)
@@ -291,7 +326,7 @@ def simular_clientes(n: int = 20, seed: int = 42):
     df = pd.DataFrame(clientes)[CABECALHO]
     df.to_csv(CADASTRO_CSV, index=False, encoding="utf-8-sig")
     print(f"\n  {n} clientes simulados salvos em: {CADASTRO_CSV}")
-    print(f"  Distribuicao de perfis:")
+    print("  Distribuicao de perfis:")
     print(df["perfil"].value_counts().to_string())
     return df
 
@@ -300,15 +335,16 @@ def simular_clientes(n: int = 20, seed: int = 42):
 # FLUXO PRINCIPAL
 # ============================================================
 
+
 def modo_cadastro():
     titulo("CADASTRO DE CLIENTE — PERFIL DE INVESTIDOR")
 
     print("\n[ DADOS PESSOAIS ]\n")
-    nome     = pergunta_texto("  Nome completo")
-    cpf      = pergunta_cpf()
-    email    = pergunta_texto("  E-mail")
+    nome = pergunta_texto("  Nome completo")
+    cpf = pergunta_cpf()
+    email = pergunta_texto("  E-mail")
     telefone = pergunta_texto("  Telefone")
-    idade    = pergunta_texto("  Idade")
+    idade = pergunta_texto("  Idade")
 
     print("\n\n[ QUESTIONARIO DE PERFIL ]\n")
     print("  Responda com honestidade — as recomendacoes dependem disso.\n")
@@ -325,9 +361,13 @@ def modo_cadastro():
 
     dados = {
         "data_cadastro": datetime.now().strftime("%Y-%m-%d"),
-        "nome": nome, "cpf": cpf, "email": email,
-        "telefone": telefone, "idade": idade,
-        "perfil": perfil, "score_perfil": score,
+        "nome": nome,
+        "cpf": cpf,
+        "email": email,
+        "telefone": telefone,
+        "idade": idade,
+        "perfil": perfil,
+        "score_perfil": score,
         **respostas,
     }
     salvar_cliente(dados)
@@ -338,7 +378,7 @@ def modo_cadastro():
         imprimir_recomendacoes(perfil, nome, df_rec)
 
         # Salva recomendações do cliente
-        rec_path = CADASTRO_CSV.replace("clientes.csv", f"rec_{cpf.replace('.','').replace('-','')}.xlsx")
+        rec_path = CADASTRO_CSV.replace("clientes.csv", f"rec_{cpf.replace('.', '').replace('-', '')}.xlsx")
         if not df_rec.empty:
             df_rec.to_excel(rec_path, index=False)
             print(f"  Recomendacoes salvas em: {rec_path}")
@@ -375,10 +415,7 @@ if __name__ == "__main__":
         simular_clientes(n)
 
     elif op == 3:
-        perfil = pergunta_opcao(
-            "Qual perfil consultar?",
-            ["CONSERVADOR", "MODERADO", "ARROJADO"]
-        )
+        perfil = pergunta_opcao("Qual perfil consultar?", ["CONSERVADOR", "MODERADO", "ARROJADO"])
         perfil_str = ["CONSERVADOR", "MODERADO", "ARROJADO"][perfil - 1]
         if df_rating is not None:
             df_rec = recomendar(perfil_str, df_rating)

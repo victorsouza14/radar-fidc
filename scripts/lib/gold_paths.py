@@ -13,6 +13,7 @@ Estrutura no ADLS:
           └─ macroeconomicos/
               └─ consolidade.csv
 """
+
 from __future__ import annotations
 
 import os
@@ -25,11 +26,11 @@ GOLD_PREFIX = os.environ.get("AZURE_GOLD_PREFIX", "final")
 # Mantém o mesmo basename dos arquivos antigos em `data_real/` para
 # minimizar superfície de mudança ao migrar.
 PATHS: dict[str, str] = {
-    "rating":          f"{GOLD_PREFIX}/rating_fidc.xlsx",
-    "matches":         f"{GOLD_PREFIX}/matches.xlsx",
-    "clientes":        f"{GOLD_PREFIX}/clientes.csv",
-    "credit":          f"{GOLD_PREFIX}/scores_credito.csv",
-    "macro":           f"{GOLD_PREFIX}/macroeconomicos/consolidade.csv",
+    "rating": f"{GOLD_PREFIX}/rating_fidc.xlsx",
+    "matches": f"{GOLD_PREFIX}/matches.xlsx",
+    "clientes": f"{GOLD_PREFIX}/clientes.csv",
+    "credit": f"{GOLD_PREFIX}/scores_credito.csv",
+    "macro": f"{GOLD_PREFIX}/macroeconomicos/consolidade.csv",
 }
 
 # Diretório de cache local (resolvido para path absoluto pelo azure_io).

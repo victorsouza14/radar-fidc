@@ -3,21 +3,20 @@
 Pandas devolve `NaN` / `NaT` que viram inválido em JSON. Esses helpers garantem
 que tudo que vai pro payload seja tipo nativo serializável.
 """
+
 from __future__ import annotations
 
 import math
-from typing import Any, Optional
+from typing import Any
 
 
 def is_nullish(v: Any) -> bool:
     if v is None:
         return True
-    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
-        return True
-    return False
+    return isinstance(v, float) and (math.isnan(v) or math.isinf(v))
 
 
-def to_float(v: Any, default: Optional[float] = 0.0, digits: Optional[int] = None) -> Optional[float]:
+def to_float(v: Any, default: float | None = 0.0, digits: int | None = None) -> float | None:
     if is_nullish(v):
         return default
     try:
@@ -61,6 +60,7 @@ def truncate(s: Any, max_len: int, suffix: str = "…") -> str:
 # Esses helpers são a fronteira de saída pública (data.json) para PII de clientes.
 # Nunca emitem o dado original; mantêm pista mínima para identificação cruzada
 # pelo dono do dado, não pelo público.
+
 
 def mask_cpf(raw: Any) -> str:
     """`***.***.***-XX` — preserva últimos 2 dígitos para o cliente reconhecer o próprio."""

@@ -3,6 +3,7 @@
 - `monkey_env`: limpa env vars sensíveis antes de cada teste
 - `disable_azure_real`: garante que nenhum teste bate em ADLS de verdade
 """
+
 from __future__ import annotations
 
 import sys
