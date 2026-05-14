@@ -1,14 +1,22 @@
-// Página Cenário Macro.
-//   init:  KPIs textuais + texto do cenário.
-//   mount: charts comparativos.
-
 import { Store } from "../store.js";
 import { fmtPct } from "../utils/format.js";
 import { setText } from "../utils/dom.js";
 import { verticalBar } from "../components/chart-factory.js";
+import { tokenColor } from "../ui.js";
 
-const MACRO_COLORS = ["#093A1B", "#1F8045", "#E8A33D", "#2563EB", "#B45309"];
-const INAD_COLORS  = ["#C0392B", "#E8A33D", "#1F8045", "#2563EB"];
+const macroColors = () => [
+  tokenColor("--data-accent"),
+  tokenColor("--data-positive"),
+  tokenColor("--data-warning"),
+  tokenColor("--data-info"),
+  tokenColor("--data-neutral"),
+];
+const inadColors = () => [
+  tokenColor("--data-negative"),
+  tokenColor("--data-warning"),
+  tokenColor("--data-positive"),
+  tokenColor("--data-info"),
+];
 
 function renderHeader() {
   const m = Store.macro();
@@ -27,7 +35,7 @@ function renderCharts() {
     "chart-macro-bar",
     ["SELIC", "CDI", "IPCA 12m", "SELIC proj.", "IPCA proj."],
     [m.selic, m.cdi, m.ipca, m.selic_proj, m.ipca_proj].map(v => v ?? 0),
-    MACRO_COLORS,
+    macroColors(),
     raw => `${Number(raw).toFixed(2)}%`,
   );
 
@@ -35,7 +43,7 @@ function renderCharts() {
     "chart-inad",
     ["Inadimplência PJ", "Inadimplência PF", "IBC-Br", "Dólar venda (R$)"],
     [m.inadimplencia_pj, m.inadimplencia_pf, m.ibc_br, m.dolar_venda].map(v => v ?? 0),
-    INAD_COLORS,
+    inadColors(),
     raw => `${Number(raw).toFixed(2)}`,
   );
 }

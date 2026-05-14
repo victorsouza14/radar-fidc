@@ -1,7 +1,7 @@
-// Entry point — orquestra load do store e registra páginas no router.
-
 import { load } from "./store.js";
 import * as router from "./router.js";
+import { bootUI } from "./ui.js";
+import { enhanceAllSelects } from "./components/select.js";
 
 import * as overview from "./pages/overview.js";
 import * as fidcs    from "./pages/fidcs.js";
@@ -12,7 +12,7 @@ import * as credit   from "./pages/credit.js";
 
 function showError(message) {
   document.querySelectorAll(".kpi-value").forEach(el => { el.textContent = "—"; });
-  const main = document.querySelector("main");
+  const main = document.getElementById("main");
   if (!main) return;
   const banner = document.createElement("div");
   banner.className = "error-banner";
@@ -23,6 +23,8 @@ function showError(message) {
 }
 
 async function boot() {
+  bootUI();
+
   try {
     await load();
   } catch (e) {
@@ -39,6 +41,7 @@ async function boot() {
   router.register("credit",   { init: credit.init,   mount: credit.mount });
 
   router.bootstrap("overview");
+  enhanceAllSelects();
 }
 
 boot();

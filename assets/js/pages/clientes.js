@@ -1,5 +1,3 @@
-// Página Clientes — KPIs por perfil + filtros + tabela.
-
 import { Store } from "../store.js";
 import { fmtInt, fmtNum, fmtDate, escapeHTML } from "../utils/format.js";
 import { setText, onInput, onChange } from "../utils/dom.js";
@@ -24,13 +22,13 @@ const applyFilters = memoize((s) => {
 const rowTpl = (c) => `
   <tr>
     <td style="font-weight:500">${escapeHTML(c.nome)}</td>
-    <td style="font-family:monospace;font-size:0.78rem;color:var(--ink-500)">${escapeHTML(c.cpf)}</td>
+    <td style="font-family:monospace;font-size:0.78rem;color:var(--fg-subtle)">${escapeHTML(c.cpf)}</td>
     <td>${fmtInt(c.idade)}</td>
     <td><span style="color:${perfilColor(c.perfil)};font-weight:700">${escapeHTML(c.perfil)}</span></td>
     <td><strong>${fmtNum(c.score_perfil)}</strong></td>
     <td>${EXPERIENCIA[c.experiencia - 1] ?? "—"}</td>
     <td>${HORIZONTE[c.horizonte - 1] ?? "—"}</td>
-    <td style="font-size:0.78rem;color:var(--ink-500)">${escapeHTML(fmtDate(c.data_cadastro))}</td>
+    <td style="font-size:0.78rem;color:var(--fg-subtle)">${escapeHTML(fmtDate(c.data_cadastro))}</td>
   </tr>`;
 
 function renderKPIs() {

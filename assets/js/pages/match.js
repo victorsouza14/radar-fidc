@@ -1,8 +1,6 @@
-// Página Match — seleção cliente × top-N recomendações + tabela.
-
 import { Store } from "../store.js";
 import { fmtNum, fmtPct, escapeHTML } from "../utils/format.js";
-import { setText, setHTML, onChange, onClick } from "../utils/dom.js";
+import { setText, setHTML, onChange, onClick, resetField } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
 import { perfilColor, riscoBadge, rankBadgeClass } from "../theme.js";
 import { renderTable } from "../components/table.js";
@@ -26,14 +24,14 @@ function clientHeaderTpl(c) {
     <div class="card" style="margin-bottom:24px">
       <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
         <div style="flex:1;min-width:240px">
-          <div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-500);font-weight:600">Cliente selecionado</div>
-          <div style="font-size:1.5rem;font-weight:700;color:var(--green-900);margin-top:4px">${escapeHTML(c.nome)}</div>
-          <div style="font-size:0.85rem;color:var(--ink-500);margin-top:4px">${c.idade} anos · ${escapeHTML(c.email)}</div>
+          <div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-subtle);font-weight:600">Cliente selecionado</div>
+          <div style="font-size:1.5rem;font-weight:700;color:var(--fg);margin-top:4px">${escapeHTML(c.nome)}</div>
+          <div style="font-size:0.85rem;color:var(--fg-subtle);margin-top:4px">${c.idade} anos · ${escapeHTML(c.email)}</div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-500);font-weight:600">Perfil suitability</div>
+          <div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-subtle);font-weight:600">Perfil suitability</div>
           <div style="font-size:1.4rem;font-weight:800;color:${perfilColor(c.perfil)};margin-top:4px">${escapeHTML(c.perfil)}</div>
-          <div style="font-size:0.85rem;color:var(--ink-500)">Score ${fmtNum(c.score_perfil)}</div>
+          <div style="font-size:0.85rem;color:var(--fg-subtle)">Score ${fmtNum(c.score_perfil)}</div>
         </div>
       </div>
     </div>`;
@@ -47,9 +45,9 @@ function matchCardTpl(m) {
       <div class="pme-meta">
         <div class="pme-score">${fmtNum(m.match_score)}</div>
         <span class="badge ${riscoBadge(m.risco_fundo)}">${escapeHTML(m.risco_fundo)}</span>
-        <span style="font-size:0.82rem;color:var(--ink-500)">${escapeHTML(m.tipo_cota)}</span>
+        <span style="font-size:0.82rem;color:var(--fg-subtle)">${escapeHTML(m.tipo_cota)}</span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.78rem;color:var(--ink-700);margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.78rem;color:var(--fg-muted);margin-bottom:12px">
         <div>Retorno: <strong>${fmtPct(m.retorno_anual, 2)}</strong></div>
         <div>Vol: <strong>${fmtPct(m.volatilidade, 2)}</strong></div>
         <div>Inad: <strong>${fmtPct(m.taxa_inad, 2)}</strong></div>
@@ -88,7 +86,7 @@ const tableRowTpl = (m) => `
     <td><span class="badge ${riscoBadge(m.risco_fundo)}">${escapeHTML(m.risco_fundo)}</span></td>
     <td>${fmtPct(m.retorno_anual, 2)}</td>
     <td><strong>${fmtNum(m.match_score)}</strong></td>
-    <td style="font-size:0.78rem;color:var(--ink-500)">${escapeHTML(m.motivo)}</td>
+    <td style="font-size:0.78rem;color:var(--fg-subtle)">${escapeHTML(m.motivo)}</td>
   </tr>`;
 
 function renderTabela() {
@@ -118,13 +116,11 @@ function populateClienteSelect() {
 function bindFilters() {
   onChange("f-match-cliente", v => { state.cpf = v; renderCards(); renderTabela(); });
   onChange("f-match-perfil",  v => { state.perfil = v; renderTabela(); });
-  onClick("f-match-clear",   () => {
+  onClick("f-match-clear", () => {
     state.cpf = state.perfil = "";
-    ["f-match-cliente", "f-match-perfil"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = "";
-    });
-    renderCards(); renderTabela();
+    ["f-match-cliente", "f-match-perfil"].forEach(id => resetField(id));
+    renderCards();
+    renderTabela();
   });
 }
 

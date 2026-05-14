@@ -1,41 +1,33 @@
-// Paleta semântica — único lugar onde existe a tradução "domínio → cor".
+import { tokenColor } from "./ui.js";
 
-export const RISCO_COLOR = {
-  BAIXO: "#2E9B57",
-  MEDIO: "#E8A33D",
-  ALTO:  "#C0392B",
+const RISCO_TOKEN = {
+  BAIXO: "--data-positive",
+  MEDIO: "--data-warning",
+  ALTO:  "--data-negative",
 };
-
-export const RISCO_BADGE = {
+const PERFIL_TOKEN = {
+  CONSERVADOR: "--data-positive",
+  MODERADO:    "--data-info",
+  ARROJADO:    "--data-warning",
+};
+const COTA_TOKEN = {
+  SENIOR:   "--data-info",
+  MEZANINO: "--data-accent",
+  JUNIOR:   "--data-warning",
+  UNICA:    "--data-neutral",
+};
+const RISCO_BADGE_CLASS = {
   BAIXO: "badge-A",
   MEDIO: "badge-B",
   ALTO:  "badge-D",
 };
 
-export const PERFIL_COLOR = {
-  CONSERVADOR: "#2E9B57",
-  MODERADO:    "#1F8045",
-  ARROJADO:    "#E8A33D",
-};
+const resolve = (map, key, fallback = "--data-neutral") =>
+  tokenColor(map[key] ?? fallback);
 
-export const COTA_COLOR = {
-  SENIOR:   "#093A1B",
-  MEZANINO: "#1F8045",
-  JUNIOR:   "#5BBF80",
-  UNICA:    "#E8A33D",
-};
+export const riscoColor  = (r) => resolve(RISCO_TOKEN, r);
+export const perfilColor = (p) => resolve(PERFIL_TOKEN, p);
+export const cotaColor   = (c) => resolve(COTA_TOKEN, c);
+export const riscoBadge  = (r) => RISCO_BADGE_CLASS[r] ?? "badge-N";
 
-const FALLBACK_COLOR = "#9AA8A0";
-const FALLBACK_BADGE = "badge-C";
-
-export const riscoColor = (r) => RISCO_COLOR[r] ?? FALLBACK_COLOR;
-export const riscoBadge = (r) => RISCO_BADGE[r] ?? FALLBACK_BADGE;
-export const perfilColor = (p) => PERFIL_COLOR[p] ?? FALLBACK_COLOR;
-export const cotaColor  = (c) => COTA_COLOR[c]  ?? FALLBACK_COLOR;
-
-export function rankBadgeClass(rank) {
-  if (rank === 1) return "rank-1";
-  if (rank === 2) return "rank-2";
-  if (rank === 3) return "rank-3";
-  return "rank-other";
-}
+export const rankBadgeClass = (rank) => (rank <= 3 ? "rank-top" : "");
