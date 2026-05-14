@@ -2,7 +2,6 @@ import { load } from "./store.js";
 import * as router from "./router.js";
 import { bootUI } from "./ui.js";
 import { enhanceAllSelects } from "./components/select.js";
-import { renderTrustBar } from "./components/trust-bar.js";
 import { renderFetchError } from "./components/fetch-error.js";
 
 import * as overview from "./pages/overview.js";
@@ -25,12 +24,6 @@ function showError(message) {
 
 async function boot() {
   bootUI();
-
-  // Trust bar é independente do data.json — renderiza primeiro para que o
-  // usuário sempre veja o status, mesmo se o payload principal falhar.
-  renderTrustBar("body").catch((e) => {
-    console.warn("[Radar] trust-bar falhou:", e);
-  });
 
   try {
     await load();

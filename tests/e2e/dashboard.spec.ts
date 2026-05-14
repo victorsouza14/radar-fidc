@@ -13,12 +13,10 @@
 //   3) Asserts the page rendered without JS errors and that critical
 //      data fields are present and free of "NaN"/"undefined".
 //
-// Trust-bar (S7) renders independently of data.json — main.js mounts it at
-// boot via renderTrustBar("body") — so it is asserted as a regular test.
-//
-// Heuristic markers were removed from the frontend by product decision.
-// data-quality.json still tracks heuristic_fields server-side for auditing,
-// but no UI consumes it. S3 below only checks numeric rendering of SELIC*.
+// Trust bar and heuristic markers were removed from the frontend by product
+// decision. data-quality.json still tracks pipeline_quality_check, freshness,
+// and heuristic_fields server-side for auditing, but no UI consumes them.
+// S3 below only checks numeric rendering of SELIC*.
 
 import { test, expect, type Page } from "@playwright/test";
 
@@ -58,9 +56,8 @@ function expectNoNaN(text: string | null, label: string) {
  *
  * Benign browser-injected 404 logs for optional resources (notably
  * `data-quality.json`, which only exists after the trust-manifest pipeline
- * runs locally) are filtered out — they are not script bugs, and the
- * trust-bar gracefully renders `unknown` state when the manifest is
- * missing (see assets/js/utils/trust.js).
+ * runs locally) are filtered out — they are not script bugs. No UI
+ * component consumes the manifest anymore (removed by product decision).
  */
 function isBenignConsoleError(text: string, locationUrl: string | undefined): boolean {
   // Chrome surfaces network-level 404s as a generic console.error whose text
@@ -243,16 +240,4 @@ test.describe("Radar FIDC — smoke", () => {
     await expect(donut).toBeVisible();
   });
 
-  // ─── S7 ───────────────────────────────────────────────────────────────
-  // Trust bar is mounted independently of data.json by main.js → renderTrustBar
-  // (assets/js/components/trust-bar.js). It always renders, even when the
-  // manifest (`data-quality.json`) is absent — in that case it shows the
-  // "unknown" state. We assert presence + a11y attrs + a known data-state.
-  test("S7 — Trust bar renderiza no topo com role=status", async ({ page }) => {
-    const bar = page.locator(".trust-bar");
-    await expect(bar, "Trust bar must be present in the DOM").toHaveCount(1);
-    await expect(bar).toBeVisible();
-    await expect(bar).toHaveAttribute("role", "status");
-    await expect(bar).toHaveAttribute("data-state", /ok|warn|error|unknown/);
-  });
 });
