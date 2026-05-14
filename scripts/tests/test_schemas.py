@@ -348,7 +348,7 @@ def macro_valid() -> pd.DataFrame:
         {
             "data_processamento": pd.to_datetime(["2026-05-13", "2026-05-14"]),
             "selic_meta": [13.75, 13.75],
-            "selic_efetiva": [13.65, 13.65],     # SGS 1178 — taxa efetiva anualizada
+            "selic_efetiva": [13.65, 13.65],  # SGS 1178 — taxa efetiva anualizada
             "cdi_diario": [0.05, 0.05],
             "dolar_venda": [5.10, 5.12],
             "ipca_mensal": [0.4, 0.3],
