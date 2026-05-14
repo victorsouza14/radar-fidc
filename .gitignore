@@ -26,16 +26,17 @@ env/
 dist/
 build/
 
-# Dados locais bronze/silver/gold gerados pelo pipeline Azure
+# Dados locais bronze/silver/gold gerados pelo pipeline Azure (fora do repo)
 data/
-*.parquet
 
-# CSVs em geral são gitignored, EXCETO os datasets fixos do projeto
+# Por padrão CSVs e Parquets ficam fora — exceto os datasets fixos do projeto
 *.csv
+*.parquet
 !data_real/**/*.csv
 !data_real/*.csv
+!data_real/**/*.parquet
 
-# Datasets binários do projeto (versionados — são fontes do dashboard)
+# Datasets binários do projeto (versionados — fontes do dashboard)
 !data_real/*.xlsx
 !data_real/*.pkl
 
