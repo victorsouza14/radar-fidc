@@ -131,6 +131,29 @@ tbody td:last-child  { padding-right: 0; }
 tbody td.muted { color: var(--fg-muted); }
 tbody td.num   { text-align: right; font-variant-numeric: tabular-nums; }
 
+table { table-layout: auto; }
+tbody tr {
+  height: 44px;
+}
+tbody td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+tbody td.cell-truncate {
+  max-width: 280px;
+  font-weight: 500;
+  font-size: 0.82rem;
+}
+
+.filler-row {
+  pointer-events: none;
+}
+.filler-row td {
+  visibility: hidden;
+  border-bottom-color: transparent;
+}
+
 /* Rank discreto — sem gradientes ouro/prata/bronze. */
 .rank-badge {
   display: inline-flex;
@@ -535,6 +558,75 @@ tbody td.num   { text-align: right; font-variant-numeric: tabular-nums; }
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+}
+.stat-block {
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-elev-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.stat-label {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--fg-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.stat-value {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+  line-height: 1.1;
+}
+.stat-unit {
+  font-size: var(--fs-xs);
+  color: var(--fg-subtle);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--divider);
+}
+.pagination[hidden] { display: none; }
+.pagination-info {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.pagination-controls .btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.pagination-page {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 96px;
+  text-align: center;
+  font-weight: 500;
 }
 
 /* ─── ERROR BANNER ────────────────────────────────────────────── */

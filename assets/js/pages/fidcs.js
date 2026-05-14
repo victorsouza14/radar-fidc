@@ -2,14 +2,9 @@ import { Store } from "../store.js";
 import { fmtNum, fmtPct, escapeHTML } from "../utils/format.js";
 import { setText, onInput, onChange, onClick, resetField, debounce } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
-import { riscoColor, riscoBadge, perfilColor, cotaColor } from "../theme.js";
-import { scatter, pie } from "../components/chart-factory.js";
-import { renderTable } from "../components/table.js";
-
-const RETORNO_MIN = -50;
-const RETORNO_MAX = 200;
-const TABLE_LIMIT = 200;
-const SCATTER_MAX = 400;
+import { riscoBadge, perfilColor, cotaColor } from "../theme.js";
+import { pie } from "../components/chart-factory.js";
+import { createPaginatedTable } from "../components/paginated-table.js";
 
 let _mounted = false;
 
@@ -33,7 +28,7 @@ const applyFilters = memoize((s) => {
 
 const rowTpl = (f) => `
   <tr>
-    <td style="font-weight:500;font-size:0.82rem">${escapeHTML(f.fundo)}</td>
+    <td class="cell-truncate" title="${escapeHTML(f.fundo)}">${escapeHTML(f.fundo)}</td>
     <td>${escapeHTML(f.tipo_cota)}</td>
     <td><span class="badge ${riscoBadge(f.risco)}">${escapeHTML(f.risco)}</span></td>
     <td>${fmtNum(f.score_risco)}</td>
@@ -44,63 +39,56 @@ const rowTpl = (f) => `
     <td>${f.meses_historico}m</td>
   </tr>`;
 
-function renderTabela(filtered) {
-  setText("fidcs-count",
-    `${filtered.length} FIDC${filtered.length === 1 ? "" : "s"} encontrado${filtered.length === 1 ? "" : "s"}`);
-  renderTable("tbody-fidcs", filtered, rowTpl, {
-    limit: TABLE_LIMIT, colspan: 9, empty: "Nenhum FIDC corresponde aos filtros",
-  });
+const table = createPaginatedTable({
+  prefix: "fidcs",
+  tbodyId: "tbody-fidcs",
+  rowTpl,
+  colspan: 9,
+  empty: "Nenhum FIDC corresponde aos filtros",
+  noun: "fundos",
+  keyField: "cnpj",
+  onUpdate: (page) => {
+    const label = page.total === 1 ? "FIDC encontrado" : "FIDCs encontrados";
+    setText("fidcs-count", `${page.total.toLocaleString("pt-BR")} ${label}`);
+  },
+});
+
+function average(items, field) {
+  if (!items.length) return null;
+  let sum = 0, count = 0;
+  for (const it of items) {
+    const v = it[field];
+    if (typeof v === "number" && !Number.isNaN(v)) { sum += v; count++; }
+  }
+  return count ? sum / count : null;
 }
 
-function renderScatter(filtered) {
-  const pool = [];
-  for (let i = 0; i < filtered.length; i++) {
-    const f = filtered[i];
-    if (f.retorno_anual >= RETORNO_MIN && f.retorno_anual <= RETORNO_MAX) {
-      pool.push({
-        x: f.score_risco, y: f.retorno_anual,
-        nome: f.fundo, risco: f.risco, cota: f.tipo_cota, perfil: f.perfil_sugerido,
-      });
-    }
-  }
-  const step = pool.length > SCATTER_MAX ? Math.ceil(pool.length / SCATTER_MAX) : 1;
-  const points = step > 1 ? pool.filter((_, i) => i % step === 0) : pool;
-
-  scatter(
-    "chart-scatter", points,
-    p => riscoColor(p.risco),
-    p => [
-      ` ${p.nome.slice(0, 55)}`,
-      ` Risco: ${p.risco} (${fmtNum(p.x)})`,
-      ` Retorno: ${fmtPct(p.y, 2)}`,
-      ` ${p.cota} • ${p.perfil}`,
-    ],
-  );
+function renderStats(filtered) {
+  const fmt = (v, d = 2) => v == null ? "—" : v.toFixed(d);
+  setText("fidcs-stat-retorno", fmt(average(filtered, "retorno_anual")));
+  setText("fidcs-stat-vol",     fmt(average(filtered, "volatilidade")));
+  setText("fidcs-stat-inad",    fmt(average(filtered, "taxa_inad")));
+  setText("fidcs-stat-score",   fmt(average(filtered, "score_risco"), 1));
 }
 
 function renderPieCotas(filtered) {
-  const cotaCount = Object.create(null);
-  for (let i = 0; i < filtered.length; i++) {
-    const c = filtered[i].tipo_cota;
-    cotaCount[c] = (cotaCount[c] || 0) + 1;
-  }
-  const keys = Object.keys(cotaCount);
-  pie("chart-cota", keys, keys.map(k => cotaCount[k]), keys.map(k => cotaColor(k)));
+  const count = Object.create(null);
+  for (const f of filtered) count[f.tipo_cota] = (count[f.tipo_cota] || 0) + 1;
+  const keys = Object.keys(count);
+  pie("chart-cota", keys, keys.map(k => count[k]), keys.map(cotaColor));
 }
 
-// Tabela render imediato; charts debounce+rAF para não bloquear typing nos filtros.
-const scheduleCharts = debounce((filtered) => {
+const scheduleChart = debounce((filtered) => {
   if (!_mounted) return;
-  requestAnimationFrame(() => {
-    renderScatter(filtered);
-    renderPieCotas(filtered);
-  });
+  requestAnimationFrame(() => renderPieCotas(filtered));
 }, 120);
 
 function onStateChange() {
+  table.reset();
   const filtered = applyFilters(state);
-  renderTabela(filtered);
-  scheduleCharts(filtered);
+  table.render(filtered);
+  renderStats(filtered);
+  scheduleChart(filtered);
 }
 
 function bindFilters() {
@@ -116,13 +104,13 @@ function bindFilters() {
 }
 
 export function init() {
-  renderTabela(applyFilters(state));
+  const filtered = applyFilters(state);
+  table.render(filtered);
+  renderStats(filtered);
   bindFilters();
 }
 
 export function mount() {
   _mounted = true;
-  const filtered = applyFilters(state);
-  renderScatter(filtered);
-  renderPieCotas(filtered);
+  renderPieCotas(applyFilters(state));
 }
