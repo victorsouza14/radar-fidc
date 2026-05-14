@@ -7,13 +7,25 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASE = os.environ.get("RADAR_ARQUIVOS", str(ROOT / "data_real" / "arquivos"))
 OUTPUT = os.environ.get("RADAR_OUTPUT", str(ROOT / "data_real"))
+
+# ─── Constantes versionadas ─────────────────────────────────────────────
+# Mediana histórica fixa (2020-2025) da inadimplência PJ — fixar para estabilidade
+# temporal do rating. Antes era recalculada a cada execução como mediana móvel
+# (`inad_pj_serie.median()`), o que fazia o `fator_macro` mudar conforme o BCB
+# publicava nova observação. Isso reescalava `f_inad` e deslocava as fronteiras
+# de cluster, gerando instabilidade na classe (BAIXO/MEDIO/ALTO) de FIDCs entre
+# runs consecutivos sem que o fundo tivesse mudado.
+#
+# Valor: 4,20% (mediana das observações mensais BCB SGS 21084 entre 2020-2025).
+# Se atualizar este valor, documentar em `docs/limitacoes_atuais.md` no
+# histórico de heurísticas substituídas.
+INAD_PJ_MEDIANA_HISTORICA = 4.20
 
 
 def main() -> int:
@@ -267,19 +279,20 @@ def main() -> int:
 
     inad_pj_serie = pd.to_numeric(df_macro["inadimplencia_pj"], errors="coerce").dropna()
     inad_pj_atual = inad_pj_serie.iloc[-1]
-    inad_pj_median = inad_pj_serie.median()
-    fator_macro = inad_pj_atual / inad_pj_median if inad_pj_median > 0 else 1.0
+    # Usa mediana histórica fixa (constante versionada) em vez de mediana móvel —
+    # ver `INAD_PJ_MEDIANA_HISTORICA` no topo do módulo para racional completo.
+    fator_macro = inad_pj_atual / INAD_PJ_MEDIANA_HISTORICA if INAD_PJ_MEDIANA_HISTORICA > 0 else 1.0
     selic_atual = pd.to_numeric(df_macro["selic_meta"], errors="coerce").dropna().iloc[-1]
 
     print(
-        f"  Inadimplência PJ atual: {inad_pj_atual:.2f}% | mediana histórica: {inad_pj_median:.2f}% | fator macro: {fator_macro:.3f}"
+        f"  Inadimplência PJ atual: {inad_pj_atual:.2f}% | mediana histórica fixa: {INAD_PJ_MEDIANA_HISTORICA:.2f}% | fator macro: {fator_macro:.3f}"
     )
     print(f"  SELIC atual: {selic_atual:.1f}%\n")
 
     # ============================================================
-    # 7. SCORE DE RISCO ML  (StandardScaler + PCA + KMeans)
+    # 7. SCORE DE RISCO ML  (StandardScaler + PCA + tercis do SCORE_RISCO)
     # ============================================================
-    print("[7/7] Calculando score de risco com ML (StandardScaler + PCA + KMeans)...")
+    print("[7/7] Calculando score de risco com ML (StandardScaler + PCA + tercis)...")
 
     df_risk = conc_df.merge(inad_df, on="CNPJ_FUNDO", how="outer")
     df_risk = df_risk.merge(scr_df, on="CNPJ_FUNDO", how="outer")
@@ -331,13 +344,16 @@ def main() -> int:
     scores_norm = (score_raw - score_raw.min()) / (score_raw.max() - score_raw.min()) * 100
     df_ml["SCORE_RISCO"] = scores_norm
 
-    # KMeans: 3 clusters naturais, sem thresholds fixos
-    kmeans = KMeans(n_clusters=3, random_state=42, n_init=20)
-    df_ml["_cluster"] = kmeans.fit_predict(X_scaled)
-
-    ordem = df_ml.groupby("_cluster")["SCORE_RISCO"].mean().sort_values().index
-    label_map = {c: lab for c, lab in zip(ordem, ["BAIXO", "MEDIO", "ALTO"], strict=False)}
-    df_ml["CATEGORIA_RISCO"] = df_ml["_cluster"].map(label_map)
+    # CATEGORIA via tercis do SCORE_RISCO (determinístico, monotônico, auditável).
+    # Substituiu K-Means (Fase 3) para eliminar instabilidade entre runs causada
+    # por re-clusterização sobre features rescaled pelo fator macro. Combinado com
+    # `INAD_PJ_MEDIANA_HISTORICA` fixa, o rating é totalmente reproduzível.
+    q33, q67 = df_ml["SCORE_RISCO"].quantile([0.33, 0.67])
+    df_ml["CATEGORIA_RISCO"] = pd.cut(
+        df_ml["SCORE_RISCO"],
+        bins=[-np.inf, q33, q67, np.inf],
+        labels=["BAIXO", "MEDIO", "ALTO"],
+    )
 
     # Devolve os resultados para df_risk
     df_risk.loc[mask_completo, "SCORE_RISCO"] = df_ml["SCORE_RISCO"].values
@@ -347,14 +363,15 @@ def main() -> int:
     # Diagnóstico
     var_exp = pca.explained_variance_ratio_
     loadings = dict(zip(FEAT_NAMES, pca.components_[0], strict=False))
-    print(f"  Fundos clusterizados (dados completos): {mask_completo.sum()} / {len(df_risk)}")
+    print(f"  Fundos classificados (dados completos): {mask_completo.sum()} / {len(df_risk)}")
     print(
         f"  Variancia explicada -> PC1: {var_exp[0] * 100:.1f}%  PC2: {var_exp[1] * 100:.1f}%  PC3: {var_exp[2] * 100:.1f}%  PC4: {var_exp[3] * 100:.1f}%"
     )
     print("  Pesos aprendidos (loadings PC1):")
     for nome, peso in sorted(loadings.items(), key=lambda x: abs(x[1]), reverse=True):
         print(f"    {nome:<20}: {peso:+.4f}")
-    print(f"  Distribuicao de clusters: {df_risk['CATEGORIA_RISCO'].value_counts().to_dict()}")
+    print(f"  Cortes tercis SCORE_RISCO -> q33: {q33:.2f}  q67: {q67:.2f}")
+    print(f"  Distribuicao por categoria: {df_risk['CATEGORIA_RISCO'].value_counts().to_dict()}")
     print()
 
     # Junta risco com retorno por classe
