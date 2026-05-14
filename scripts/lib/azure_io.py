@@ -19,6 +19,7 @@ Erros:
     - 5xx/timeout -> retry exponencial do SDK (config explícita abaixo)
     - ETag inconsistente entre HEAD e GET -> warn + re-download
 """
+
 from __future__ import annotations
 
 import io
@@ -26,7 +27,7 @@ import os
 import pickle
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
@@ -55,8 +56,7 @@ def _service_client() -> DataLakeServiceClient:
     conn = os.environ.get("AZURE_CONNECTION_STRING")
     if not conn:
         raise AzureMissingConnectionString(
-            "AZURE_CONNECTION_STRING ausente. "
-            "Configure no .env local ou no GitHub Secret AZURE_CONNECTION_STRING."
+            "AZURE_CONNECTION_STRING ausente. Configure no .env local ou no GitHub Secret AZURE_CONNECTION_STRING."
         )
     # retry_total=5, backoff exponencial. SDK Azure já trata 5xx; 401/403 não retenta.
     return DataLakeServiceClient.from_connection_string(
@@ -181,7 +181,7 @@ def read_csv(remote_path: str, **kwargs: Any) -> pd.DataFrame:
     if isinstance(cached, pd.DataFrame):
         return cached
     data = download_to_bytes(remote_path)
-    df = pd.read_csv(io.BytesIO(data), **kwargs)
+    df: pd.DataFrame = pd.read_csv(io.BytesIO(data), **kwargs)
     _save_parsed_cache(remote_path, df)
     return df
 
@@ -191,7 +191,9 @@ def read_excel(remote_path: str, sheet_name: str | int | None = 0, **kwargs: Any
     if isinstance(cached, pd.DataFrame):
         return cached
     data = download_to_bytes(remote_path)
-    df = pd.read_excel(io.BytesIO(data), sheet_name=sheet_name, **kwargs)
+    # pandas.read_excel pode devolver DataFrame ou dict[str, DataFrame] dependendo de sheet_name;
+    # nossa assinatura aceita só um sheet_name escalar (string|int|None=0) → resultado é DataFrame.
+    df = cast(pd.DataFrame, pd.read_excel(io.BytesIO(data), sheet_name=sheet_name, **kwargs))
     _save_parsed_cache(f"{remote_path}::{sheet_name}", df)
     return df
 
@@ -200,11 +202,7 @@ def read_excel_sheets(remote_path: str, sheets: list[str]) -> dict[str, pd.DataF
     """Lê múltiplas abas de um único download (mais eficiente que vários read_excel)."""
     data = download_to_bytes(remote_path)
     xls = pd.ExcelFile(io.BytesIO(data))
-    return {
-        sheet: pd.read_excel(xls, sheet_name=sheet)
-        for sheet in sheets
-        if sheet in xls.sheet_names
-    }
+    return {sheet: pd.read_excel(xls, sheet_name=sheet) for sheet in sheets if sheet in xls.sheet_names}
 
 
 def list_dir(remote_dir: str) -> list[str]:
