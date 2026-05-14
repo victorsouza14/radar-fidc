@@ -103,6 +103,27 @@ Para que o GitHub Action funcione, configure o secret `AZURE_CONNECTION_STRING` 
 
 ---
 
+## ⚙️ Workflows GitHub Actions
+
+O repositório roda 3 workflows independentes em `.github/workflows/`:
+
+| Workflow | Trigger | Função |
+|----------|---------|--------|
+| [`ci.yml`](.github/workflows/ci.yml) | `pull_request` para `main` + `push` em qualquer branch | Lint (`ruff check`), format check (`ruff format --check`), type check (`mypy`), unit tests (`pytest`) e secret scan (`gitleaks`) — todos em jobs paralelos com cache de pip. Target: ~2 min. Falha bloqueia merge via branch protection (ver [`docs/runbook.md`](docs/runbook.md)). |
+| [`data-refresh.yml`](.github/workflows/data-refresh.yml) | `schedule` (cron `0 9 * * *` UTC) + `workflow_dispatch` | Lê o Gold do ADLS Gen2 (`dfdatalakesprint/gold/final/`), valida o secret `AZURE_CONNECTION_STRING`, regenera `data.json` e commita em `main` se houve mudança. Concorrência serializada (`cancel-in-progress: false`) para evitar commits pela metade. |
+| [`notify-failures.yml`](.github/workflows/notify-failures.yml) | `workflow_run` (`completed`) sobre `data-refresh.yml` | Em falha: abre (ou comenta em) issue com label `data-refresh-failure` incluindo link do run, step que falhou e últimas 50 linhas do log. Em sucesso: fecha automaticamente as issues abertas com essa label. De-duplica por label para não inundar o repo. |
+
+### Status checks obrigatórios em `main`
+
+Depois do merge do `ci.yml`, ative branch protection com os 5 checks
+listados em [`docs/runbook.md`](docs/runbook.md#status-checks-obrigatórios)
+(`lint-python`, `lint-python-format`, `type-check`, `unit-tests`,
+`secret-scan`). A ativação é manual — o GitHub não expõe a configuração
+via REST API simples para `Allow specified actors to bypass`, que é
+necessária para o `github-actions[bot]` continuar commitando `data.json`.
+
+---
+
 ## 📁 Estrutura do Repositório
 
 ```
@@ -113,7 +134,9 @@ radar-fidc/
 ├── requirements.txt                    # Dependências Python
 │
 ├── .github/workflows/
-│   └── data-refresh.yml                # GitHub Action de atualização diária (lê ADLS → data.json)
+│   ├── ci.yml                          # PR/push checks (ruff + mypy + pytest + gitleaks)
+│   ├── data-refresh.yml                # GitHub Action de atualização diária (lê ADLS → data.json)
+│   └── notify-failures.yml             # Reaction workflow: issues automáticas em falha do data-refresh
 │
 ├── scripts/
 │   └── generate_dashboard_data.py      # ADLS gold/final/ → data.json
