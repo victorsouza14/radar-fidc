@@ -1,0 +1,45 @@
+# Pre-commit hooks do Radar FIDC.
+# Instalar (uma vez por clone):
+#   pip install pre-commit && pre-commit install
+# Executar manualmente em todos os arquivos:
+#   pre-commit run --all-files
+
+repos:
+  # ─── Segurança: detecta segredos vazando para o commit ───────────────
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        name: gitleaks (scan for secrets)
+
+  # ─── Python: lint + format ───────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.10
+    hooks:
+      - id: ruff
+        name: ruff (lint)
+        args: [--fix]
+      - id: ruff-format
+        name: ruff (format)
+
+  # ─── Markdown / YAML / JSON: format ──────────────────────────────────
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        name: prettier (md/yml/json)
+        types_or: [markdown, yaml, json]
+        # Excluir o data.json (gerado pelo pipeline; formatado em uma linha por design).
+        exclude: ^(data\.json|.*\.min\.(js|css)|.*\.lock)$
+
+  # ─── Higiene básica ──────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: ^data\.json$
+      - id: check-added-large-files
+        args: ["--maxkb=5000"]
