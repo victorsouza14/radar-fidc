@@ -9,7 +9,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from .cnae_setor import setor_from_cnae
@@ -142,23 +141,29 @@ def _iqr_filter(series: pd.Series) -> pd.Series:
 
 
 def _fidc_indicadores(confiaveis: pd.DataFrame) -> dict[str, Any]:
-    """Estatísticas resumidas da seleção confiável — fonte única, calculada server-side."""
+    """Estatísticas resumidas da seleção confiável — fonte única, calculada server-side.
+
+    - retorno_max/min: max e min sobre retornos POSITIVOS (rating.py já caps em
+      30% — extremos reais devem ser exibidos sem IQR, que mascararia o melhor
+      fundo disponível).
+    - inad_media: aplica Tukey 1.5x IQR (TAXA_INADIMPLENCIA tem outliers ~23k
+      no Gold; sem IQR a média seria dominada pelo ruído).
+    """
     if confiaveis.empty:
         return {"retorno_max": None, "retorno_min": None, "inad_media": None}
 
-    # Retorno: descarta valores não positivos antes do IQR (perdas históricas
-    # distorcem a leitura e o produto pede apenas o intervalo positivo).
-    retornos_positivos = confiaveis.loc[confiaveis["RETORNO_ANUAL"] > 0, "RETORNO_ANUAL"]
-    ret_filtrado = _iqr_filter(retornos_positivos)
+    def _round_or_none(v: float | None, ndigits: int) -> float | None:
+        return round(float(v), ndigits) if v is not None and not pd.isna(v) else None
 
+    retornos_positivos = pd.to_numeric(
+        confiaveis.loc[confiaveis["RETORNO_ANUAL"] > 0, "RETORNO_ANUAL"],
+        errors="coerce",
+    ).dropna()
     inad_filtrado = _iqr_filter(confiaveis["TAXA_INADIMPLENCIA"])
 
-    def _round_or_none(v: float | None, ndigits: int) -> float | None:
-        return round(float(v), ndigits) if v is not None and not np.isnan(v) else None
-
     return {
-        "retorno_max": _round_or_none(ret_filtrado.max() if len(ret_filtrado) else None, 2),
-        "retorno_min": _round_or_none(ret_filtrado.min() if len(ret_filtrado) else None, 2),
+        "retorno_max": _round_or_none(retornos_positivos.max() if len(retornos_positivos) else None, 2),
+        "retorno_min": _round_or_none(retornos_positivos.min() if len(retornos_positivos) else None, 2),
         "inad_media": _round_or_none(inad_filtrado.mean() if len(inad_filtrado) else None, 2),
     }
 
