@@ -1,7 +1,7 @@
 /* Radar FIDC — Trust layer
  *
- * Estilos para sticky trust bar, heuristic markers inline, empty states
- * e banners de fetch error. Consome tokens semânticos de tokens.css.
+ * Estilos para sticky trust bar, empty states e banners de fetch error.
+ * Consome tokens semânticos de tokens.css.
  *
  * Decisão do usuário: trust bar só assume 🟢 OK ou 🔴 ERROR. Não há
  * estado amarelo (evita "amarelo crônico"). Heurísticas aparecem apenas
@@ -223,43 +223,6 @@
 
 .trust-bar__panel-footer a:hover {
   color: var(--accent-hover);
-}
-
-/* ─────────────────────────────────────────────────────────────────
- * Heuristic marker — usado inline com o valor heurístico.
- * Padrão WCAG: ícone + texto + aria-label. Tooltip nativo via title.
- * ───────────────────────────────────────────────────────────────── */
-.heuristic-marker {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1, 4px);
-
-  margin-left: var(--s-2, 8px);
-  padding: 2px var(--s-2, 8px);
-
-  font-family: var(--font-sans);
-  font-size: var(--fs-xs, 0.75rem);
-  font-weight: 500;
-  line-height: 1.2;
-  vertical-align: middle;
-
-  color: var(--trust-warn-fg);
-  background: var(--trust-warn-bg);
-  border: 1px solid var(--trust-warn-border);
-  border-radius: var(--r-xs, 4px);
-
-  cursor: help;
-  white-space: nowrap;
-}
-
-.heuristic-marker__icon {
-  font-size: 0.7rem;
-  line-height: 1;
-}
-
-.heuristic-marker:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
 }
 
 /* ─────────────────────────────────────────────────────────────────

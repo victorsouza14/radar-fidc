@@ -16,10 +16,9 @@
 // Trust-bar (S7) renders independently of data.json — main.js mounts it at
 // boot via renderTrustBar("body") — so it is asserted as a regular test.
 //
-// The heuristic-marker assertion in S3 is soft-only today because the
-// trust-manifest (`data-quality.json`) is not produced locally; once the
-// data-refresh workflow ships the manifest in CI, the marker will render and
-// the soft expect becomes a hard pass.
+// Heuristic markers were removed from the frontend by product decision.
+// data-quality.json still tracks heuristic_fields server-side for auditing,
+// but no UI consumes it. S3 below only checks numeric rendering of SELIC*.
 
 import { test, expect, type Page } from "@playwright/test";
 
@@ -60,8 +59,8 @@ function expectNoNaN(text: string | null, label: string) {
  * Benign browser-injected 404 logs for optional resources (notably
  * `data-quality.json`, which only exists after the trust-manifest pipeline
  * runs locally) are filtered out — they are not script bugs, and the
- * trust-bar / heuristic-marker helpers handle the missing manifest
- * gracefully by design (see assets/js/utils/trust.js).
+ * trust-bar gracefully renders `unknown` state when the manifest is
+ * missing (see assets/js/utils/trust.js).
  */
 function isBenignConsoleError(text: string, locationUrl: string | undefined): boolean {
   // Chrome surfaces network-level 404s as a generic console.error whose text
@@ -147,7 +146,7 @@ test.describe("Radar FIDC — smoke", () => {
   });
 
   // ─── S3 ───────────────────────────────────────────────────────────────
-  test("S3 — Macro mostra SELIC numérica e marca heurística em selic_proj", async ({ page }) => {
+  test("S3 — Macro mostra SELIC numérica e projeções sem NaN", async ({ page }) => {
     await gotoTab(page, "macro");
 
     // SELIC: must be a pure numeric (allow comma decimals — fmtPct uses pt-BR).
@@ -160,31 +159,14 @@ test.describe("Radar FIDC — smoke", () => {
       `#m-selic must match /^\\d+([.,]\\d+)?\\s*%?$/, got "${selicText}"`,
     ).toBe(true);
 
-    // SELIC projetada must also render without NaN.
+    // SELIC and IPCA projetada must also render without NaN.
     const selicProjEl = page.locator("#m-selic-proj");
     await expect(selicProjEl).toBeVisible();
     expectNoNaN(await selicProjEl.textContent(), "#m-selic-proj");
 
-    // Heuristic marker on selic_proj.
-    //
-    // Today the marker is *not yet* wired into renderHeader() in
-    // assets/js/pages/macro.js — the integration is happening in a parallel
-    // task. assets/js/utils/trust.js and assets/css/trust.css are already in
-    // tree, so we keep the assertion soft: when the marker is rendered the
-    // soft expect will succeed; until then it logs the gap without failing
-    // the suite. Promote to `expect(...).toBeVisible()` when the marker is
-    // mounted on `#m-selic-proj`.
-    const heuristicMarker = page.locator("#page-macro .heuristic-marker").first();
-    const heuristicCount = await heuristicMarker.count();
-    if (heuristicCount > 0) {
-      await expect.soft(heuristicMarker, "heuristic marker should be visible").toBeVisible();
-    } else {
-      test.info().annotations.push({
-        type: "todo",
-        description:
-          "Heuristic marker on #m-selic-proj not yet integrated (tracked by Macro polish task). Promote to hard assertion once renderHeader() injects the marker.",
-      });
-    }
+    const ipcaProjEl = page.locator("#m-ipca-proj");
+    await expect(ipcaProjEl).toBeVisible();
+    expectNoNaN(await ipcaProjEl.textContent(), "#m-ipca-proj");
   });
 
   // ─── S4 ───────────────────────────────────────────────────────────────

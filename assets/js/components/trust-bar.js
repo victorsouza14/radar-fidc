@@ -104,8 +104,6 @@ function summaryLine(manifest) {
     parts.push(`Atualizado: ${formatTimestamp(ts)}`);
   }
 
-  // Detalhamento de heurísticas fica no painel expandido (clique no caret),
-  // não no resumo inline. Mantém o header limpo.
   return parts.join(" · ");                 // " · "
 }
 
@@ -184,23 +182,12 @@ function renderPanelContent(manifest) {
     })
     .join("");
 
-  const heuristicsCount = Array.isArray(manifest.heuristic_fields)
-    ? manifest.heuristic_fields.length
-    : 0;
-  const heuristicsItem = heuristicsCount > 0
-    ? `<div class="trust-bar__panel-item">
-         <span class="trust-bar__panel-item-label">Heurísticas ativas</span>
-         <span class="trust-bar__panel-item-value" data-status="warn">${heuristicsCount} campo${heuristicsCount === 1 ? "" : "s"}</span>
-       </div>`
-    : "";
-
   return `
     <p class="trust-bar__panel-title">Detalhes do manifesto</p>
     <div class="trust-bar__panel-grid">
       ${generatedAt}
       ${pipelineRun}
       ${freshnessItems}
-      ${heuristicsItem}
     </div>
     <p class="trust-bar__panel-footer">
       Pipeline e fontes documentadas em
