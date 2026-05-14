@@ -144,14 +144,13 @@ test.describe("Radar FIDC — smoke", () => {
   });
 
   // ─── S3 ───────────────────────────────────────────────────────────────
-  test("S3 — Visão geral mostra SELIC + CDI + IPCA macro KPIs sem NaN", async ({ page }) => {
+  test("S3 — Visão geral mostra CDI + IPCA macro KPIs sem NaN", async ({ page }) => {
     await gotoTab(page, "overview");
 
-    // Macro indicators moved from the (removed) #page-macro section into
-    // the overview page as informative cards. IDs are suffixed with
-    // `-overview` to make their context explicit and avoid collisions.
+    // Macro strip in overview (4 indicators, agrupados em uma única caixa).
+    // SELIC atual já vive nos KPIs principais do topo (#kpi-selic) — não
+    // duplicamos no strip macro.
     const macroIds = [
-      "#m-selic-overview",
       "#m-cdi-overview",
       "#m-ipca-overview",
       "#m-selic-proj-overview",

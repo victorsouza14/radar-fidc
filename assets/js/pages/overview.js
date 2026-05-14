@@ -43,7 +43,6 @@ const PCT2 = (v) => fmtPct(v, 2);
 
 function renderMacroKPIs() {
   const m = Store.macro();
-  setText("m-selic-overview",      fmtPct(m.selic));
   setText("m-cdi-overview",        fmtPct(m.cdi));
   setText("m-ipca-overview",       PCT2(m.ipca));
   setText("m-selic-proj-overview", fmtPct(m.selic_proj));
