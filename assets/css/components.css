@@ -200,6 +200,18 @@ tbody td.cell-truncate {
 .badge-N { background: var(--bg-elev-2); color: var(--fg-muted); }
 .badge-N::before { background: var(--fg-subtle); }
 
+/* Empresas com `total_boletos < MIN_BOLETOS_SCORE_CONFIAVEL` não têm score
+   estatisticamente comparável. O backend marca `dados_suficientes=false`
+   e o frontend substitui Score/Prob default por este indicador discreto. */
+.badge-dados-insuficientes {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--fg-subtle);
+  white-space: nowrap;
+}
+
 /* ─── MACRO CARDS ─────────────────────────────────────────────── */
 .macro-grid {
   display: grid;
@@ -275,6 +287,28 @@ tbody td.cell-truncate {
   gap: var(--s-2);
   flex-wrap: wrap;
   align-items: center;
+}
+
+/* Agrupa um label + 2 inputs (min/max) num cluster compacto sem quebrar
+   o flex-wrap do filter-row pai. Útil para filtros de ranges numéricos. */
+.filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-1);
+}
+.filter-group > label {
+  font-size: var(--fs-xs);
+  color: var(--fg-subtle);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Override do `.input { min-width: 200px }` quando o input é parte de um
+   par min/max — assim cabem dois lado a lado sem rolagem horizontal. */
+.input.input-narrow {
+  min-width: 0;
+  width: 84px;
 }
 
 .input,

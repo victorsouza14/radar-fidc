@@ -2,9 +2,9 @@
 //
 // The dashboard is a single-page static app: index.html ships every <section
 // class="page">, and assets/js/router.js toggles `.active` on click of the
-// sidebar nav buttons (data-page="overview|fidcs|macro|clientes|match|credit").
-// There is no hash routing today, so we navigate by clicking the nav button
-// and waiting for the section to gain `.active`.
+// sidebar nav buttons (data-page="overview|fidcs|match|credit"). There is
+// no hash routing today, so we navigate by clicking the nav button and
+// waiting for the section to gain `.active`.
 //
 // Each test:
 //   1) Boots the app at "/" and waits for the store to hydrate
@@ -13,18 +13,21 @@
 //   3) Asserts the page rendered without JS errors and that critical
 //      data fields are present and free of "NaN"/"undefined".
 //
+// The standalone "Cenário macroeconômico" and "Clientes" pages were removed
+// by product decision: macro indicators now live as KPI cards on the
+// overview page (#m-*-overview ids), and clientes data is only consumed
+// internally by the match/recommendation engine. data.json still ships
+// `clientes` and `macro` blocks for those consumers.
+//
 // Trust bar and heuristic markers were removed from the frontend by product
 // decision. data-quality.json still tracks pipeline_quality_check, freshness,
 // and heuristic_fields server-side for auditing, but no UI consumes them.
-// S3 below only checks numeric rendering of SELIC*.
 
 import { test, expect, type Page } from "@playwright/test";
 
 const NAV = {
   overview: ".nav-btn[data-page=\"overview\"]",
   fidcs:    ".nav-btn[data-page=\"fidcs\"]",
-  macro:    ".nav-btn[data-page=\"macro\"]",
-  clientes: ".nav-btn[data-page=\"clientes\"]",
   match:    ".nav-btn[data-page=\"match\"]",
   credit:   ".nav-btn[data-page=\"credit\"]",
 } as const;
@@ -32,8 +35,6 @@ const NAV = {
 const SECTION = {
   overview: "#page-overview",
   fidcs:    "#page-fidcs",
-  macro:    "#page-macro",
-  clientes: "#page-clientes",
   match:    "#page-match",
   credit:   "#page-credit",
 } as const;
@@ -143,54 +144,34 @@ test.describe("Radar FIDC — smoke", () => {
   });
 
   // ─── S3 ───────────────────────────────────────────────────────────────
-  test("S3 — Macro mostra SELIC numérica e projeções sem NaN", async ({ page }) => {
-    await gotoTab(page, "macro");
+  test("S3 — Visão geral mostra SELIC + CDI + IPCA macro KPIs sem NaN", async ({ page }) => {
+    await gotoTab(page, "overview");
 
-    // SELIC: must be a pure numeric (allow comma decimals — fmtPct uses pt-BR).
-    const selic = page.locator("#m-selic");
-    await expect(selic).toBeVisible();
-    const selicText = ((await selic.textContent()) ?? "").trim();
-    expectNoNaN(selicText, "#m-selic");
-    expect(
-      /^\d+([.,]\d+)?\s*%?$/.test(selicText),
-      `#m-selic must match /^\\d+([.,]\\d+)?\\s*%?$/, got "${selicText}"`,
-    ).toBe(true);
-
-    // SELIC and IPCA projetada must also render without NaN.
-    const selicProjEl = page.locator("#m-selic-proj");
-    await expect(selicProjEl).toBeVisible();
-    expectNoNaN(await selicProjEl.textContent(), "#m-selic-proj");
-
-    const ipcaProjEl = page.locator("#m-ipca-proj");
-    await expect(ipcaProjEl).toBeVisible();
-    expectNoNaN(await ipcaProjEl.textContent(), "#m-ipca-proj");
+    // Macro indicators moved from the (removed) #page-macro section into
+    // the overview page as informative cards. IDs are suffixed with
+    // `-overview` to make their context explicit and avoid collisions.
+    const macroIds = [
+      "#m-selic-overview",
+      "#m-cdi-overview",
+      "#m-ipca-overview",
+      "#m-selic-proj-overview",
+      "#m-ipca-proj-overview",
+    ];
+    for (const id of macroIds) {
+      const el = page.locator(id);
+      await expect(el, `${id} should be visible`).toBeVisible();
+      const text = ((await el.textContent()) ?? "").trim();
+      expectNoNaN(text, id);
+      expect(text, `${id} should not be the placeholder "—"`).not.toBe("—");
+      expect(
+        /^-?\d+([.,]\d+)?\s*%?$/.test(text),
+        `${id} must match /^-?\\d+([.,]\\d+)?\\s*%?$/, got "${text}"`,
+      ).toBe(true);
+    }
   });
 
   // ─── S4 ───────────────────────────────────────────────────────────────
-  test("S4 — Clientes mostra ao menos uma linha ou empty-state amigável", async ({ page }) => {
-    await gotoTab(page, "clientes");
-
-    const tbody = page.locator("#tbody-clientes");
-    await expect(tbody).toBeVisible();
-
-    const rows = tbody.locator("tr");
-    const emptyCell = tbody.locator('[data-empty-state="true"]');
-    const rowCount = await rows.count();
-    const emptyCount = await emptyCell.count();
-
-    expect(
-      rowCount > 0 || emptyCount > 0,
-      `Clientes page must show rows (${rowCount}) or an empty-state cell (${emptyCount})`,
-    ).toBe(true);
-
-    // Total KPI must be a number (independent of the table state).
-    const total = page.locator("#kc-total");
-    await expect(total).toBeVisible();
-    expectNoNaN(await total.textContent(), "#kc-total");
-  });
-
-  // ─── S5 ───────────────────────────────────────────────────────────────
-  test("S5 — Match exibe tabela top-3 ou empty-state com sugestões", async ({ page }) => {
+  test("S4 — Match exibe tabela top-3 ou empty-state com sugestões", async ({ page }) => {
     await gotoTab(page, "match");
 
     const tbody = page.locator("#tbody-match");
@@ -216,8 +197,8 @@ test.describe("Radar FIDC — smoke", () => {
     expect(optionCount, "Client select must have placeholder + at least one client").toBeGreaterThanOrEqual(2);
   });
 
-  // ─── S6 ───────────────────────────────────────────────────────────────
-  test("S6 — Credit mostra KPIs numéricos e tabela de empresas", async ({ page }) => {
+  // ─── S5 ───────────────────────────────────────────────────────────────
+  test("S5 — Credit mostra KPIs numéricos e tabela de empresas", async ({ page }) => {
     await gotoTab(page, "credit");
 
     // Headline KPI (empresas avaliadas) must be numeric and non-zero shape.

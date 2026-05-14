@@ -127,17 +127,9 @@
         <svg><use href="#icon-landmark"/></svg>
         <span class="nav-btn-label">FIDCs</span>
       </button>
-      <button class="nav-btn" data-page="macro" data-tooltip="Cenário macro">
-        <svg><use href="#icon-trending"/></svg>
-        <span class="nav-btn-label">Cenário macro</span>
-      </button>
 
       <div class="sidebar-section">Carteira</div>
 
-      <button class="nav-btn" data-page="clientes" data-tooltip="Clientes">
-        <svg><use href="#icon-users"/></svg>
-        <span class="nav-btn-label">Clientes</span>
-      </button>
       <button class="nav-btn" data-page="match" data-tooltip="Recomendações">
         <svg><use href="#icon-target"/></svg>
         <span class="nav-btn-label">Recomendações</span>
@@ -233,6 +225,48 @@
             <div class="kpi-label"><svg><use href="#icon-pulse"/></svg> SELIC atual</div>
             <div class="kpi-value" id="kpi-selic">—</div>
             <div class="kpi-sub" id="kpi-cenario">—</div>
+          </div>
+        </div>
+
+        <div class="section-title">
+          <svg><use href="#icon-trending"/></svg>
+          Cenário macroeconômico
+        </div>
+        <div class="macro-grid">
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-activity"/></svg> SELIC meta</div>
+            <div class="macro-value" id="m-selic-overview">—</div>
+            <div class="macro-unit">% ao ano</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-activity"/></svg> CDI</div>
+            <div class="macro-value" id="m-cdi-overview">—</div>
+            <div class="macro-unit">% ao ano</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-trending"/></svg> IPCA 12m</div>
+            <div class="macro-value" id="m-ipca-overview">—</div>
+            <div class="macro-unit">% acumulado</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-pulse"/></svg> SELIC projetada</div>
+            <div class="macro-value" id="m-selic-proj-overview">—</div>
+            <div class="macro-unit">próximos 12m</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-trending"/></svg> IPCA projetada</div>
+            <div class="macro-value" id="m-ipca-proj-overview">—</div>
+            <div class="macro-unit">próximos 12m</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-activity"/></svg> Inadimplência PJ</div>
+            <div class="macro-value" id="m-inad-pj-overview">—</div>
+            <div class="macro-unit">% da carteira</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-activity"/></svg> Dólar venda</div>
+            <div class="macro-value" id="m-dolar-overview">—</div>
+            <div class="macro-unit">R$ / USD</div>
           </div>
         </div>
 
@@ -360,121 +394,6 @@
         </div>
       </section>
 
-      <!-- ─── CENÁRIO MACRO ─── -->
-      <section id="page-macro" class="page">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Cenário macroeconômico</h1>
-            <div class="page-subtitle">SELIC, CDI, IPCA e projeções. Fonte: BCB.</div>
-          </div>
-        </div>
-
-        <div class="macro-grid">
-          <div class="macro-card">
-            <div class="macro-label"><svg><use href="#icon-activity"/></svg> SELIC Meta</div>
-            <div class="macro-value" id="m-selic">—</div>
-            <div class="macro-unit">% ao ano</div>
-          </div>
-          <div class="macro-card">
-            <div class="macro-label"><svg><use href="#icon-activity"/></svg> CDI</div>
-            <div class="macro-value" id="m-cdi">—</div>
-            <div class="macro-unit">% ao ano</div>
-          </div>
-          <div class="macro-card">
-            <div class="macro-label"><svg><use href="#icon-trending"/></svg> IPCA 12m</div>
-            <div class="macro-value" id="m-ipca">—</div>
-            <div class="macro-unit">% acumulado</div>
-          </div>
-          <div class="macro-card">
-            <div class="macro-label"><svg><use href="#icon-pulse"/></svg> SELIC projetada</div>
-            <div class="macro-value" id="m-selic-proj">—</div>
-            <div class="macro-unit">próximos 12m</div>
-          </div>
-          <div class="macro-card">
-            <div class="macro-label"><svg><use href="#icon-trending"/></svg> IPCA projetada</div>
-            <div class="macro-value" id="m-ipca-proj">—</div>
-            <div class="macro-unit">próximos 12m</div>
-          </div>
-        </div>
-
-        <div class="callout">
-          <svg><use href="#icon-activity"/></svg>
-          <div>
-            <div class="callout-title">Cenário macroeconômico atual</div>
-            <div class="callout-text" id="cenario-desc">—</div>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-title"><svg><use href="#icon-bar"/></svg> Comparativo de indicadores</div>
-            <div class="chart-container"><canvas id="chart-macro-bar"></canvas></div>
-          </div>
-          <div class="card">
-            <div class="card-title"><svg><use href="#icon-trending"/></svg> Inadimplência PJ vs PF</div>
-            <div class="chart-container"><canvas id="chart-inad"></canvas></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ─── CLIENTES ─── -->
-      <section id="page-clientes" class="page">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Clientes</h1>
-            <div class="page-subtitle">Base de PMEs e investidores classificados por perfil suitability.</div>
-          </div>
-        </div>
-
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-label"><svg><use href="#icon-users"/></svg> Total</div>
-            <div class="kpi-value" id="kc-total">—</div>
-            <div class="kpi-sub">clientes cadastrados</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Conservadores</div>
-            <div class="kpi-value" id="kc-cons">—</div>
-            <div class="kpi-sub" id="kc-cons-pct">—</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Moderados</div>
-            <div class="kpi-value" id="kc-mod">—</div>
-            <div class="kpi-sub" id="kc-mod-pct">—</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Arrojados</div>
-            <div class="kpi-value" id="kc-arr">—</div>
-            <div class="kpi-sub" id="kc-arr-pct">—</div>
-          </div>
-        </div>
-
-        <div class="card card-compact" style="margin-bottom:20px">
-          <div class="filter-row">
-            <select id="f-cli-busca" class="select" style="min-width:280px">
-              <option value="">Selecione um cliente…</option>
-            </select>
-            <select id="f-cli-perfil" class="select">
-              <option value="">Perfil: todos</option>
-              <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><svg><use href="#icon-users"/></svg> Base de clientes</div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th>Nome</th><th>CPF</th><th class="num">Idade</th><th>Perfil</th>
-                <th class="num">Score perfil</th><th>Experiência</th><th>Horizonte</th><th>Cadastro</th>
-              </tr></thead>
-              <tbody id="tbody-clientes"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
       <!-- ─── MATCH / RECOMENDAÇÕES ─── -->
       <section id="page-match" class="page">
         <div class="page-header">
@@ -581,8 +500,24 @@
             </select>
             <div class="input-icon">
               <svg><use href="#icon-search"/></svg>
-              <input type="text" id="f-credit-busca" class="input" placeholder="Buscar por id_cnpj">
+              <input type="text" id="f-credit-busca" class="input" placeholder="Buscar por nome da empresa">
             </div>
+            <div class="filter-group">
+              <label for="f-credit-score-min">Score:</label>
+              <input type="number" id="f-credit-score-min" placeholder="min" min="0" max="100" class="input input-narrow" aria-label="Score mínimo">
+              <input type="number" id="f-credit-score-max" placeholder="max" min="0" max="100" class="input input-narrow" aria-label="Score máximo">
+            </div>
+            <div class="filter-group">
+              <label for="f-credit-prob-min">Prob default:</label>
+              <input type="number" id="f-credit-prob-min" placeholder="min" min="0" max="1" step="0.01" class="input input-narrow" aria-label="Probabilidade de default mínima">
+              <input type="number" id="f-credit-prob-max" placeholder="max" min="0" max="1" step="0.01" class="input input-narrow" aria-label="Probabilidade de default máxima">
+            </div>
+            <div class="filter-group">
+              <label for="f-credit-boletos-min">Boletos:</label>
+              <input type="number" id="f-credit-boletos-min" placeholder="min" min="0" class="input input-narrow" aria-label="Total de boletos mínimo">
+              <input type="number" id="f-credit-boletos-max" placeholder="max" min="0" class="input input-narrow" aria-label="Total de boletos máximo">
+            </div>
+            <button class="btn btn-ghost" id="f-credit-clear">Limpar</button>
           </div>
         </div>
 
@@ -591,7 +526,7 @@
           <div class="table-wrap">
             <table>
               <thead><tr>
-                <th>ID</th><th class="num">Score</th><th class="num">Prob. default</th><th>Risco</th>
+                <th>Empresa</th><th class="num">Score</th><th class="num">Prob. default</th><th>Risco</th>
                 <th class="num">Total boletos</th><th class="num">Defaults</th><th class="num">% default</th>
               </tr></thead>
               <tbody id="tbody-credit"></tbody>
