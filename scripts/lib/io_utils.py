@@ -173,6 +173,7 @@ def read_focus_indicators() -> dict[str, Any] | None:
             return None
         raise
     import io as _io
+
     df = pd.read_parquet(_io.BytesIO(data))
     if df.empty:
         return None
