@@ -11,6 +11,7 @@ from typing import Any
 
 import pandas as pd
 
+from .cnae_setor import setor_from_cnae
 from .formatters import (
     cnpj_fmt,
     mask_cpf,
@@ -343,6 +344,8 @@ def _credit_row(r: pd.Series) -> dict[str, Any]:
     dados_suficientes = total_boletos >= MIN_BOLETOS_SCORE_CONFIAVEL
     return {
         "nome": _nome_empresa(r.get("id_cnpj")),
+        "setor": setor_from_cnae(r.get("cd_cnae_prin")),
+        "uf": to_str(r.get("uf"), "—"),
         "score": to_float(r.get("score_credito"), 0.0, 1),
         "prob_default": to_float(r.get("prob_default"), 0.0, 4),
         "risco": to_str(r.get("risco_credito"), "SEM DADOS"),

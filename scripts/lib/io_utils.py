@@ -109,12 +109,30 @@ def read_clientes() -> pd.DataFrame:
 
 
 def read_credit_scores() -> pd.DataFrame:
+    """Lê scores_credito.csv e enriquece com setor (CNAE) + UF.
+
+    JOIN LEFT com `base_auxiliar_fiap.csv` via `id_cnpj`. Empresas sem
+    correspondência ficam com `cd_cnae_prin`/`uf` nulos (downstream
+    devolve "Não classificado" / "—").
+    """
     df = _empty_on_404(azure_io.read_csv, PATHS["credit"])
     if df.empty:
         return df
     for col in ("score_credito", "prob_default", "pct_default", "defaultou"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    aux = _empty_on_404(azure_io.read_csv, PATHS["credit_aux"])
+    if not aux.empty and "id_cnpj" in aux.columns:
+        cols_to_join = ["id_cnpj"] + [c for c in ("cd_cnae_prin", "uf") if c in aux.columns]
+        df = df.merge(aux[cols_to_join], on="id_cnpj", how="left")
+        log.info(
+            "credit_aux_joined",
+            rows_credit=len(df),
+            rows_with_setor=int(df["cd_cnae_prin"].notna().sum()) if "cd_cnae_prin" in df else 0,
+            rows_with_uf=int(df["uf"].notna().sum()) if "uf" in df else 0,
+        )
+
     return _validate(df, CreditSchema, "scores_credito.csv")
 
 

@@ -30,6 +30,10 @@ PATHS: dict[str, str] = {
     "matches": f"{GOLD_PREFIX}/matches.xlsx",
     "clientes": f"{GOLD_PREFIX}/clientes.csv",
     "credit": f"{GOLD_PREFIX}/scores_credito.csv",
+    # Base auxiliar: setor (CNAE) + UF por id_cnpj. Join com `credit` para
+    # enriquecer o display do Credit Scoring sem violar K-anonimato
+    # (nome real anonimizado upstream pela fonte FIAP).
+    "credit_aux": f"{GOLD_PREFIX}/base_auxiliar_fiap.csv",
     "macro": f"{GOLD_PREFIX}/macroeconomicos/consolidade.csv",
     # Indicadores macro consolidados pelo notebook 02_indicadores_macro,
     # incluem projeções Focus (selic_projetada_12m, ipca_projetado_12m).
