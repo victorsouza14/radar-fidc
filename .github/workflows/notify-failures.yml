@@ -1,0 +1,195 @@
+name: Notify failures
+
+# Reaction workflow: dispara quando `Data refresh (ADLS -> data.json)` termina.
+# - Em failure: cria issue com label `data-refresh-failure` (de-duplicando por
+#   label aberto), inclui link do run, identifica o(s) job(s)/step(s) que
+#   falharam e anexa as ultimas 50 linhas do log se disponivel.
+# - Em success: fecha issues abertos com a mesma label e adiciona comentario
+#   referenciando o run que voltou ao verde.
+
+on:
+  workflow_run:
+    workflows: ["Data refresh (ADLS → data.json)"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notify-failures-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  on-failure:
+    name: Open issue on failure
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Collect failed step + last 50 log lines
+        id: diagnose
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        continue-on-error: true
+        run: |
+          set +e
+          mkdir -p /tmp/diag
+          LOG_FILE=/tmp/diag/failed.log
+          STEP_FILE=/tmp/diag/failed-step.txt
+
+          # 1) Identificar job/step que falhou via API REST (mais robusto que
+          #    parsear texto).
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.conclusion=="failure") | "\(.name) :: \(.steps[]? | select(.conclusion=="failure") | .name)"' \
+            > "${STEP_FILE}" 2>/dev/null
+
+          if [ ! -s "${STEP_FILE}" ]; then
+            echo "(nao foi possivel identificar step que falhou via API)" > "${STEP_FILE}"
+          fi
+
+          # 2) Baixar log do run e pegar as ultimas 50 linhas dos logs "falhados".
+          #    --log-failed e o atalho do gh CLI; se falhar, tentamos --log.
+          gh run view "${RUN_ID}" --repo "${REPO}" --log-failed > "${LOG_FILE}" 2>/dev/null
+          if [ ! -s "${LOG_FILE}" ]; then
+            gh run view "${RUN_ID}" --repo "${REPO}" --log > "${LOG_FILE}" 2>/dev/null
+          fi
+
+          if [ -s "${LOG_FILE}" ]; then
+            tail -n 50 "${LOG_FILE}" > /tmp/diag/tail.log
+          else
+            echo "(log indisponivel - gh run view falhou ou run sem logs publicos)" > /tmp/diag/tail.log
+          fi
+
+          # Exporta para passos subsequentes via arquivos (evita problemas com
+          # multi-line outputs e caracteres especiais).
+          echo "step_file=${STEP_FILE}" >> "${GITHUB_OUTPUT}"
+          echo "log_file=/tmp/diag/tail.log" >> "${GITHUB_OUTPUT}"
+          exit 0
+
+      - name: Open or update issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea   # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const run = context.payload.workflow_run;
+            const label = 'data-refresh-failure';
+
+            // Le artefatos do passo de diagnostico (best-effort).
+            let failedSteps = '(indisponivel)';
+            let logTail = '(indisponivel)';
+            try {
+              const p = process.env.STEP_FILE;
+              if (p && fs.existsSync(p)) {
+                const txt = fs.readFileSync(p, 'utf8').trim();
+                if (txt) failedSteps = txt;
+              }
+            } catch (e) { core.warning(`failed to read step file: ${e.message}`); }
+            try {
+              const p = process.env.LOG_FILE;
+              if (p && fs.existsSync(p)) {
+                const txt = fs.readFileSync(p, 'utf8');
+                if (txt.trim()) logTail = txt;
+              }
+            } catch (e) { core.warning(`failed to read log file: ${e.message}`); }
+
+            // De-duplica: se ja existe issue aberto com a label, atualiza ao
+            // inves de criar outro (commenta com o novo run).
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: label,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const body = [
+              `**Workflow:** ${run.name}`,
+              `**Conclusao:** ${run.conclusion}`,
+              `**Branch:** ${run.head_branch}`,
+              `**Commit:** \`${run.head_sha}\``,
+              `**Run:** ${run.html_url}`,
+              `**Disparado em:** ${run.run_started_at}`,
+              ``,
+              `### Step(s) que falharam`,
+              '```text',
+              failedSteps,
+              '```',
+              ``,
+              `### Ultimas 50 linhas do log`,
+              '```text',
+              logTail.length > 60000 ? logTail.slice(-60000) : logTail,
+              '```',
+              ``,
+              `> Consulte \`docs/runbook.md\` para diagnostico operacional.`,
+            ].join('\n');
+
+            if (existing.data.length > 0) {
+              const issue = existing.data[0];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Nova falha detectada no run ${run.html_url}\n\n${body}`,
+              });
+              core.info(`Comentario adicionado em issue #${issue.number}`);
+              return;
+            }
+
+            const title = `data-refresh falhou - run ${run.id}`;
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: [label],
+            });
+            core.info(`Issue criada: #${created.data.number}`);
+        env:
+          STEP_FILE: ${{ steps.diagnose.outputs.step_file }}
+          LOG_FILE: ${{ steps.diagnose.outputs.log_file }}
+
+  on-success:
+    name: Close issues on success
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Close open data-refresh-failure issues
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea   # v7.0.1
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const label = 'data-refresh-failure';
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: label,
+              state: 'open',
+              per_page: 100,
+            });
+            for (const issue of issues.data) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `fixed by run ${run.html_url}`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+              core.info(`Issue #${issue.number} fechada.`);
+            }
