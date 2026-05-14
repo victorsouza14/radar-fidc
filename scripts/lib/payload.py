@@ -30,6 +30,12 @@ MAX_CREDIT = 500
 # Filtra fundos com pouco histórico (não confiáveis para ranking).
 MIN_MESES_HISTORICO = 6
 
+# Piso de retorno anual (%) para elegibilidade. Espelha ``SELIC`` em
+# ``data_fishermans_final/match.py``: fundos abaixo dessa taxa não entram
+# nas recomendações e tampouco nos indicadores agregados da carteira
+# (caso contrário "retorno mínimo" reflete fundos não-elegíveis).
+SELIC_FLOOR_RETORNO_ANUAL = 14.75
+
 # Mínimo de boletos para que o score de crédito seja considerado confiável.
 # Empresas abaixo desse threshold são marcadas ``dados_suficientes=False`` e
 # o frontend renderiza "Dados insuficientes" no lugar dos valores numéricos.
@@ -141,13 +147,17 @@ def _iqr_filter(series: pd.Series) -> pd.Series:
 
 
 def _fidc_indicadores(confiaveis: pd.DataFrame) -> dict[str, Any]:
-    """Estatísticas resumidas da seleção confiável — fonte única, calculada server-side.
+    """Estatísticas resumidas da carteira ELEGÍVEL — fonte única, server-side.
 
-    - retorno_max/min: max e min sobre retornos POSITIVOS (rating.py já caps em
-      30% — extremos reais devem ser exibidos sem IQR, que mascararia o melhor
-      fundo disponível).
-    - inad_media: aplica Tukey 1.5x IQR (TAXA_INADIMPLENCIA tem outliers ~23k
-      no Gold; sem IQR a média seria dominada pelo ruído).
+    O universo é o mesmo que ``match.py`` aplica: ``MESES_HISTORICO >= 6``
+    (vem de ``confiaveis``) **e** ``RETORNO_ANUAL >= SELIC_FLOOR_RETORNO_ANUAL``.
+    Isso garante que o que aparece no card de indicadores bate com o que
+    aparece nas tabelas de match (retorno mínimo = SELIC efetiva no Gold).
+
+    - retorno_max/min: extremos sobre o universo elegível (sem IQR, para não
+      mascarar o melhor/pior fundo recomendado).
+    - inad_media: aplica Tukey 1.5x IQR sobre a inadimplência do mesmo
+      universo (TAXA_INADIMPLENCIA tem outliers ~23k no Gold; IQR estabiliza).
     """
     if confiaveis.empty:
         return {"retorno_max": None, "retorno_min": None, "inad_media": None}
@@ -155,16 +165,15 @@ def _fidc_indicadores(confiaveis: pd.DataFrame) -> dict[str, Any]:
     def _round_or_none(v: float | None, ndigits: int) -> float | None:
         return round(float(v), ndigits) if v is not None and not pd.isna(v) else None
 
-    retornos_positivos = pd.to_numeric(
-        confiaveis.loc[confiaveis["RETORNO_ANUAL"] > 0, "RETORNO_ANUAL"],
-        errors="coerce",
-    ).dropna()
-    inad_filtrado = _iqr_filter(confiaveis["TAXA_INADIMPLENCIA"])
+    retornos = pd.to_numeric(confiaveis["RETORNO_ANUAL"], errors="coerce").dropna()
+    elegiveis_mask = retornos >= SELIC_FLOOR_RETORNO_ANUAL
+    retornos_elegiveis = retornos[elegiveis_mask]
+    inad_elegivel = _iqr_filter(confiaveis.loc[retornos.index[elegiveis_mask], "TAXA_INADIMPLENCIA"])
 
     return {
-        "retorno_max": _round_or_none(retornos_positivos.max() if len(retornos_positivos) else None, 2),
-        "retorno_min": _round_or_none(retornos_positivos.min() if len(retornos_positivos) else None, 2),
-        "inad_media": _round_or_none(inad_filtrado.mean() if len(inad_filtrado) else None, 2),
+        "retorno_max": _round_or_none(retornos_elegiveis.max() if len(retornos_elegiveis) else None, 2),
+        "retorno_min": _round_or_none(retornos_elegiveis.min() if len(retornos_elegiveis) else None, 2),
+        "inad_media": _round_or_none(inad_elegivel.mean() if len(inad_elegivel) else None, 2),
     }
 
 

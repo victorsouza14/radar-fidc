@@ -220,9 +220,15 @@ class TestBuildFidcsEmpty:
 
 
 class TestBuildFidcsIndicadores:
-    """Indicadores agregados são calculados server-side — frontend só renderiza."""
+    """Indicadores agregados são calculados server-side — frontend só renderiza.
 
-    def test_retorno_max_min_descartam_negativos(self) -> None:
+    Universo: ``MESES_HISTORICO >= 6`` e ``RETORNO_ANUAL >= SELIC_FLOOR (14.75%)``.
+    Espelha o filtro do ``match.py`` para que indicador bata com tabela de
+    matches no front.
+    """
+
+    def test_retorno_max_min_aplica_piso_selic(self) -> None:
+        """Retornos abaixo da SELIC (14.75%) saem do cálculo."""
         geral = pd.DataFrame(
             [
                 _geral_row(CNPJ=f"{i:014d}", FUNDO=f"F{i}", RETORNO_ANUAL=ret, MESES_HISTORICO=24)
@@ -230,19 +236,25 @@ class TestBuildFidcsIndicadores:
             ]
         )
         ind = build_fidcs(geral)["stats"]["indicadores"]
-        # Negativos e zero descartados.
+        # Só 15.0 e 22.0 passam o piso SELIC 14.75%.
         assert ind["retorno_max"] == 22.0
-        assert ind["retorno_min"] == 8.0
+        assert ind["retorno_min"] == 15.0
 
-    def test_inad_media_eh_pos_iqr(self) -> None:
+    def test_inad_media_eh_pos_iqr_no_universo_elegivel(self) -> None:
         rows = [
-            _geral_row(CNPJ=f"{i:014d}", FUNDO=f"F{i}", TAXA_INADIMPLENCIA=v, MESES_HISTORICO=24)
+            _geral_row(
+                CNPJ=f"{i:014d}",
+                FUNDO=f"F{i}",
+                RETORNO_ANUAL=20.0,  # todos elegíveis
+                TAXA_INADIMPLENCIA=v,
+                MESES_HISTORICO=24,
+            )
             for i, v in enumerate([2.0, 3.0, 4.0, 5.0, 6.0, 9999.0])
         ]
         ind = build_fidcs(pd.DataFrame(rows))["stats"]["indicadores"]
         # 9999 é descartado pelo IQR.
         assert ind["inad_media"] is not None
-        assert ind["inad_media"] < 10  # média sã, não dominada pelo outlier
+        assert ind["inad_media"] < 10
 
     def test_fundos_curtos_nao_entram_no_calculo(self) -> None:
         """``MIN_MESES_HISTORICO`` filtra o universo dos indicadores."""
@@ -255,6 +267,14 @@ class TestBuildFidcsIndicadores:
         ind = build_fidcs(geral)["stats"]["indicadores"]
         # 99.0 do fundo curto não entra; só o confiável.
         assert ind["retorno_max"] == 20.0
+
+    def test_universo_vazio_se_nada_passa_selic(self) -> None:
+        """Se nenhum fundo bate o piso SELIC, indicadores ficam None."""
+        geral = pd.DataFrame([_geral_row(CNPJ="A", RETORNO_ANUAL=10.0, MESES_HISTORICO=24)])
+        ind = build_fidcs(geral)["stats"]["indicadores"]
+        assert ind["retorno_max"] is None
+        assert ind["retorno_min"] is None
+        assert ind["inad_media"] is None
 
 
 class TestBuildFidcsMinHistorico:
