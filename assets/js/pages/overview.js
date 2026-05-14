@@ -1,7 +1,3 @@
-// Página Visão Geral.
-//   init:  KPIs + tabela ranking (não dependem de canvas visível).
-//   mount: donuts + top10 (charts — criados na 1ª ativação).
-
 import { Store } from "../store.js";
 import { fmtInt, fmtPct, fmtNum, truncate, escapeHTML } from "../utils/format.js";
 import { setText } from "../utils/dom.js";
@@ -14,7 +10,7 @@ const PERFIL_ORDER = ["CONSERVADOR", "MODERADO", "ARROJADO"];
 
 function renderKPIs() {
   const f = Store.fidcs.stats();
-  // KPI mostra fundos com classificação válida (não "SEM DADOS")
+  // Soma BAIXO+MEDIO+ALTO porque KPI exclui fundos sem classificação.
   const porRisco = f.distribuicao?.por_risco ?? {};
   const analisados = (porRisco.BAIXO ?? 0) + (porRisco.MEDIO ?? 0) + (porRisco.ALTO ?? 0);
   setText("kpi-fundos", fmtInt(analisados));
@@ -69,7 +65,7 @@ function renderDonuts() {
 }
 
 function selectTop10() {
-  // Usa o mesmo MIN_MESES_HISTORICO consumido pelo backend para evitar inconsistência.
+  // Mesmo threshold do backend para o ranking bater com o de outras telas.
   const minMeses = Store.config().min_meses_historico ?? 6;
   return Store.fidcs.detalhe()
     .filter(f => f.risco !== "SEM DADOS" && f.retorno_anual > 0 && f.meses_historico >= minMeses)

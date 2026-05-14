@@ -1,6 +1,3 @@
-// Store de dados — fonte única (SRP). Faz fetch, valida o shape, expõe getters.
-// Os módulos de página NÃO acessam DATA global; consomem só estes getters.
-
 const DATA_URL = "data.json";
 
 let _data = null;
@@ -31,7 +28,6 @@ function ensure() {
   return _data;
 }
 
-// Getters específicos por seção — encapsulam o shape do JSON.
 export const Store = {
   macro:  () => ensure().macro,
   config: () => ensure().config ?? {},
@@ -49,9 +45,9 @@ export const Store = {
   },
 
   matches: {
-    lista:           () => ensure().matches.lista,
-    rankingFundos:   () => ensure().matches.ranking_fundos,
-    byCpf:           (cpf) => ensure().matches.lista.filter(m => m.cpf === cpf),
+    lista:         () => ensure().matches.lista,
+    rankingFundos: () => ensure().matches.ranking_fundos,
+    byCpf:         (cpf) => ensure().matches.lista.filter(m => m.cpf === cpf),
   },
 
   credit: {

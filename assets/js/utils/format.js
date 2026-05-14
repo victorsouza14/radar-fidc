@@ -1,7 +1,3 @@
-// Funções puras de formatação. Sem efeitos colaterais, fácil de testar.
-// Cada função tem 1 responsabilidade (SRP).
-
-// Placeholder usado em todo lugar onde um valor está ausente/inválido.
 const PLACEHOLDER = "—";
 
 const isNullish = (v) => v == null || (typeof v === "number" && Number.isNaN(v));
@@ -35,11 +31,6 @@ export function truncate(text, max = 40, suffix = "…") {
   return s.length > max ? s.slice(0, max) + suffix : s;
 }
 
-/**
- * Escapa caracteres especiais para uso seguro em `innerHTML`.
- * Fronteira anti-XSS: todo dado vindo de fontes externas (data.json, inputs)
- * deve passar por aqui antes de ser interpolado em template literal.
- */
 const HTML_ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 export function escapeHTML(value) {
   if (value == null) return "";

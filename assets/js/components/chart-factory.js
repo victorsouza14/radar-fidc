@@ -1,21 +1,16 @@
-// Factory de gráficos — Chart.js encapsulado, com registry + defaults perf-friendly.
-// OCP: novos tipos se acrescentam aqui sem mudar quem chama.
+import { tokenColor } from "../ui.js";
 
 const registry = new Map();
 
-// Defaults globais — desligar animações pesadas + parsing desnecessário.
 function applyGlobalDefaults() {
-  if (typeof Chart === "undefined") return;
-  if (Chart._radarDefaultsApplied) return;
-  Chart.defaults.animation = false;          // sem animação (maior ganho de fps)
+  if (typeof Chart === "undefined" || Chart._radarDefaultsApplied) return;
+  Chart.defaults.animation = false;
   Chart.defaults.animations.colors = false;
   Chart.defaults.animations.x = false;
   Chart.defaults.animations.y = false;
   Chart.defaults.transitions.active.animation.duration = 0;
   Chart.defaults.responsive = true;
   Chart.defaults.maintainAspectRatio = false;
-  Chart.defaults.font.family = "Inter, system-ui, sans-serif";
-  Chart.defaults.font.size = 11;
   Chart._radarDefaultsApplied = true;
 }
 
@@ -30,26 +25,22 @@ function ensureCanvas(id) {
   return el;
 }
 
-
-/** Cria/atualiza um chart pelo id do canvas. */
 export function render(id, config) {
   applyGlobalDefaults();
   destroy(id);
-  const canvas = ensureCanvas(id);
-  const chart = new Chart(canvas, config);
+  const chart = new Chart(ensureCanvas(id), config);
   registry.set(id, chart);
   return chart;
 }
 
-// ─── presets reutilizáveis ───
+const cardBg    = () => tokenColor("--bg-elev-1");
+const gridColor = () => tokenColor("--divider");
+const tickColor = () => tokenColor("--fg-subtle");
 
 export function doughnut(id, labels, values, colors, total) {
   return render(id, {
     type: "doughnut",
-    data: {
-      labels,
-      datasets: [{ data: values, backgroundColor: colors, borderWidth: 3, borderColor: "#fff" }],
-    },
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: cardBg() }] },
     options: {
       plugins: {
         legend: { position: "bottom", labels: { padding: 14 } },
@@ -63,82 +54,59 @@ export function doughnut(id, labels, values, colors, total) {
           },
         },
       },
-      cutout: "62%",
+      cutout: "68%",
+    },
+  });
+}
+
+export function pie(id, labels, values, colors) {
+  return render(id, {
+    type: "pie",
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: cardBg() }] },
+    options: { plugins: { legend: { position: "bottom" } } },
+  });
+}
+
+function bar({ id, labels, data, colors, tooltip, horizontal = false }) {
+  const valueAxis = { grid: { color: gridColor(), drawTicks: false }, ticks: { color: tickColor() } };
+  const labelAxis = { grid: { display: false }, ticks: { color: tickColor(), font: { size: 11 } } };
+  if (horizontal) valueAxis.ticks.callback = v => `${v}%`;
+
+  return render(id, {
+    type: "bar",
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: colors, borderWidth: 1, borderRadius: 4 }] },
+    options: {
+      indexAxis: horizontal ? "y" : "x",
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: tooltip } },
+      },
+      scales: horizontal ? { x: valueAxis, y: labelAxis } : { x: labelAxis, y: valueAxis },
     },
   });
 }
 
 export function horizontalBar(id, labels, data, colors, tooltipLabel) {
-  return render(id, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: colors.map(c => c + "cc"),
-        borderColor: colors,
-        borderWidth: 2,
-        borderRadius: 6,
-      }],
-    },
-    options: {
-      indexAxis: "y",
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: tooltipLabel } },
-      },
-      scales: {
-        x: { grid: { color: "#f0f0f0" }, ticks: { callback: v => `${v}%` } },
-        y: { ticks: { font: { size: 11 } } },
-      },
-    },
-  });
+  return bar({ id, labels, data, colors, tooltip: tooltipLabel, horizontal: true });
 }
 
 export function verticalBar(id, labels, data, colors, valueFormatter) {
-  return render(id, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: colors.map(c => c + "cc"),
-        borderColor: colors,
-        borderWidth: 2,
-        borderRadius: 8,
-      }],
-    },
-    options: {
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` ${valueFormatter(ctx.raw)}` } },
-      },
-      scales: { y: { grid: { color: "#f0f0f0" } } },
-    },
-  });
+  return bar({ id, labels, data, colors, tooltip: ctx => ` ${valueFormatter(ctx.raw)}` });
 }
 
 export function scatter(id, points, colorFn, tooltipFn) {
-  // Pré-computa cores e dados num único pass — evita 2 .map() em datasets grandes.
   const data = new Array(points.length);
   const colors = new Array(points.length);
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
     data[i] = { x: p.x, y: p.y, _meta: p };
-    colors[i] = colorFn(p) + "99";
+    colors[i] = colorFn(p) + "e0";
   }
   return render(id, {
     type: "scatter",
-    data: {
-      datasets: [{
-        data,
-        backgroundColor: colors,
-        pointRadius: 4,         // menor = menos pixels para desenhar
-        pointHoverRadius: 7,
-      }],
-    },
+    data: { datasets: [{ data, backgroundColor: colors, pointRadius: 3.5, pointHoverRadius: 6 }] },
     options: {
-      parsing: false,           // dados já estão no formato {x,y}
+      parsing: false,
       animation: false,
       plugins: {
         legend: { display: false },
@@ -146,22 +114,18 @@ export function scatter(id, points, colorFn, tooltipFn) {
         tooltip: { callbacks: { label: ctx => tooltipFn(ctx.raw._meta) } },
       },
       scales: {
-        x: { title: { display: true, text: "Score de Risco" }, grid: { color: "#f0f0f0" }, min: 0, max: 100 },
-        y: { title: { display: true, text: "Retorno anual (%)" }, grid: { color: "#f0f0f0" }, ticks: { callback: v => `${v}%` } },
+        x: {
+          title: { display: true, text: "Score de risco", color: tickColor() },
+          grid: { color: gridColor(), drawTicks: false },
+          ticks: { color: tickColor() },
+          min: 0, max: 100,
+        },
+        y: {
+          title: { display: true, text: "Retorno anual (%)", color: tickColor() },
+          grid: { color: gridColor(), drawTicks: false },
+          ticks: { color: tickColor(), callback: v => `${v}%` },
+        },
       },
-    },
-  });
-}
-
-export function pie(id, labels, data, colors) {
-  return render(id, {
-    type: "pie",
-    data: {
-      labels,
-      datasets: [{ data, backgroundColor: colors, borderWidth: 3, borderColor: "#fff" }],
-    },
-    options: {
-      plugins: { legend: { position: "bottom" } },
     },
   });
 }

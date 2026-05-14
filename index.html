@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Radar FIDC — Data Fishermans</title>
+<title>Radar FIDC — Inteligência em fundos de direitos creditórios</title>
 <meta name="description" content="Plataforma de análise, scoring e recomendação de FIDCs para PMEs. Dados ANBIMA + BCB + CVM.">
-<meta name="theme-color" content="#093A1B">
+<meta name="theme-color" content="#0B0D0C" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FAFAF7" media="(prefers-color-scheme: light)">
 <meta name="referrer" content="no-referrer">
 
 <!-- CSP: restringe origem de scripts/styles. Bloqueia execução inline acidental. -->
@@ -19,9 +20,11 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="assets/css/main.css">
+
+<script src="assets/js/preboot.js"></script>
 
 <script defer
   src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
@@ -32,267 +35,533 @@
 </head>
 <body>
 
-<header>
-  <div class="header-inner">
-    <div class="logo">
-      <div class="logo-mark"><img src="assets/logo.png" alt="Radar FIDC"></div>
-      <div class="logo-text">
-        <h1>Radar FIDC</h1>
-        <p>Análise, scoring e recomendação de FIDCs para PMEs</p>
+<!-- ─── Biblioteca de ícones Lucide (SVG symbol). Reutilizado via <use href="#icon-…">. ─── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="icon-layout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
+    </symbol>
+    <symbol id="icon-landmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7 12 2"/>
+    </symbol>
+    <symbol id="icon-trending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+    </symbol>
+    <symbol id="icon-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </symbol>
+    <symbol id="icon-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+    </symbol>
+    <symbol id="icon-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+    </symbol>
+    <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </symbol>
+    <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>
+    </symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/>
+    </symbol>
+    <symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </symbol>
+    <symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </symbol>
+    <symbol id="icon-pie" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>
+    </symbol>
+    <symbol id="icon-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+    </symbol>
+    <symbol id="icon-scatter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="21" x2="3" y2="3"/><line x1="3" y1="21" x2="21" y2="21"/><circle cx="8" cy="15" r="1.2"/><circle cx="13" cy="9" r="1.2"/><circle cx="17" cy="13" r="1.2"/><circle cx="10" cy="6" r="1.2"/><circle cx="18" cy="6" r="1.2"/>
+    </symbol>
+    <symbol id="icon-ranking" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+    </symbol>
+    <symbol id="icon-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="14" x2="22" y2="14"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="14" x2="4" y2="14"/>
+    </symbol>
+    <symbol id="icon-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><polyline points="18 12 14 4 10 20 6 12"/>
+    </symbol>
+    <symbol id="icon-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+    </symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="app" id="app">
+
+  <!-- ═══ SIDEBAR ════════════════════════════════════════════════ -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <button class="sidebar-brand" data-page="overview" aria-label="Voltar para visão geral">
+      <img src="assets/logo.png" alt="">
+      <div class="sidebar-brand-text">
+        <strong>Radar FIDC</strong>
+        <span>Data Fishermans</span>
       </div>
-    </div>
-    <div class="header-badge">
-      <strong>Data Fishermans</strong>
-      FIAP — Sprint Final 2026
-    </div>
-  </div>
-</header>
+    </button>
 
-<nav>
-  <div class="nav-inner" id="nav">
-    <button class="nav-btn active" data-page="overview">📊 Visão Geral</button>
-    <button class="nav-btn" data-page="fidcs">🏦 FIDCs</button>
-    <button class="nav-btn" data-page="macro">📈 Cenário Macro</button>
-    <button class="nav-btn" data-page="clientes">👥 Clientes</button>
-    <button class="nav-btn" data-page="match">🎯 Match</button>
-    <button class="nav-btn" data-page="credit">💳 Credit Scoring</button>
-  </div>
-</nav>
+    <nav class="sidebar-nav" id="nav">
+      <div class="sidebar-section">Análise</div>
 
-<main>
+      <button class="nav-btn active" data-page="overview" data-tooltip="Visão geral">
+        <svg><use href="#icon-layout"/></svg>
+        <span class="nav-btn-label">Visão geral</span>
+      </button>
+      <button class="nav-btn" data-page="fidcs" data-tooltip="FIDCs">
+        <svg><use href="#icon-landmark"/></svg>
+        <span class="nav-btn-label">FIDCs</span>
+      </button>
+      <button class="nav-btn" data-page="macro" data-tooltip="Cenário macro">
+        <svg><use href="#icon-trending"/></svg>
+        <span class="nav-btn-label">Cenário macro</span>
+      </button>
 
-<!-- ─── VISÃO GERAL ─── -->
-<section id="page-overview" class="page active">
-  <div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-label">FIDCs analisados</div><div class="kpi-value" id="kpi-fundos">—</div><div class="kpi-sub" id="kpi-classes">—</div></div>
-    <div class="kpi-card success"><div class="kpi-label">Clientes cadastrados</div><div class="kpi-value" id="kpi-clientes">—</div><div class="kpi-sub" id="kpi-clientes-perfis">—</div></div>
-    <div class="kpi-card accent"><div class="kpi-label">Empresas avaliadas (crédito)</div><div class="kpi-value" id="kpi-empresas">—</div><div class="kpi-sub" id="kpi-credit-default">—</div></div>
-    <div class="kpi-card info"><div class="kpi-label">SELIC atual</div><div class="kpi-value" id="kpi-selic">—</div><div class="kpi-sub" id="kpi-cenario">—</div></div>
-  </div>
+      <div class="sidebar-section">Carteira</div>
 
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">🍩 Distribuição dos FIDCs por risco</div>
-      <div class="chart-container"><canvas id="chart-risco"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title">👤 Perfil sugerido (todos os FIDCs)</div>
-      <div class="chart-container"><canvas id="chart-perfil"></canvas></div>
-    </div>
-  </div>
+      <button class="nav-btn" data-page="clientes" data-tooltip="Clientes">
+        <svg><use href="#icon-users"/></svg>
+        <span class="nav-btn-label">Clientes</span>
+      </button>
+      <button class="nav-btn" data-page="match" data-tooltip="Recomendações">
+        <svg><use href="#icon-target"/></svg>
+        <span class="nav-btn-label">Recomendações</span>
+      </button>
+      <button class="nav-btn" data-page="credit" data-tooltip="Credit scoring">
+        <svg><use href="#icon-card"/></svg>
+        <span class="nav-btn-label">Credit scoring</span>
+      </button>
+    </nav>
 
-  <div class="section-title"><span>🏆</span> Top 10 FIDCs por menor risco com retorno positivo</div>
-  <div class="card" style="margin-bottom:24px">
-    <div class="chart-container tall"><canvas id="chart-top10"></canvas></div>
-  </div>
+    <div class="sidebar-footer">
+      <div class="theme-menu-wrap">
+        <button class="sidebar-tool" id="theme-toggle" data-tooltip="Tema" aria-haspopup="menu" aria-expanded="false">
+          <svg id="theme-icon"><use href="#icon-monitor"/></svg>
+          <span class="sidebar-tool-label" id="theme-label">Tema: sistema</span>
+        </button>
 
-  <div class="card">
-    <div class="card-title">📋 Ranking — fundos mais recomendados nos matches</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Fundo</th><th>Cota</th><th>Risco</th><th>Retorno a.a.</th>
-          <th>Recomendado</th><th>Match médio</th>
-        </tr></thead>
-        <tbody id="tbody-ranking"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- ─── FIDCs ─── -->
-<section id="page-fidcs" class="page">
-  <div class="card" style="margin-bottom:24px">
-    <div class="filter-row">
-      <input type="text" id="f-fidc-busca" class="input" placeholder="🔍 Buscar por nome do fundo ou CNPJ">
-      <select id="f-fidc-risco" class="input">
-        <option value="">Risco: todos</option>
-        <option value="BAIXO">BAIXO</option><option value="MEDIO">MÉDIO</option><option value="ALTO">ALTO</option>
-      </select>
-      <select id="f-fidc-cota" class="input">
-        <option value="">Cota: todas</option>
-        <option value="SENIOR">Senior</option><option value="MEZANINO">Mezanino</option>
-        <option value="JUNIOR">Júnior</option><option value="UNICA">Única</option>
-      </select>
-      <select id="f-fidc-perfil" class="input">
-        <option value="">Perfil: todos</option>
-        <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
-      </select>
-      <button class="seg-btn active" id="f-fidc-clear">Limpar</button>
-    </div>
-  </div>
-
-  <div class="grid-2" style="margin-bottom:24px">
-    <div class="card">
-      <div class="card-title">⚡ Retorno × Score de Risco</div>
-      <div class="chart-container tall"><canvas id="chart-scatter"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title">📊 Distribuição por tipo de cota</div>
-      <div class="chart-container tall"><canvas id="chart-cota"></canvas></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title" id="fidcs-count">FIDCs filtrados</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Fundo</th><th>Cota</th><th>Risco</th><th>Score risco</th>
-          <th>Perfil</th><th>Retorno a.a.</th><th>Vol.</th><th>Inad.</th><th>Hist.</th>
-        </tr></thead>
-        <tbody id="tbody-fidcs"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- ─── CENÁRIO MACRO ─── -->
-<section id="page-macro" class="page">
-  <div class="macro-grid">
-    <div class="macro-card"><div class="macro-label">SELIC Meta</div>     <div class="macro-value" id="m-selic">—</div><div class="macro-unit">% ao ano</div></div>
-    <div class="macro-card"><div class="macro-label">CDI</div>            <div class="macro-value" id="m-cdi">—</div>  <div class="macro-unit">% ao ano</div></div>
-    <div class="macro-card"><div class="macro-label">IPCA 12m</div>       <div class="macro-value" id="m-ipca">—</div> <div class="macro-unit">% acumulado</div></div>
-    <div class="macro-card"><div class="macro-label">SELIC Projetada</div><div class="macro-value" id="m-selic-proj">—</div><div class="macro-unit">próximos 12m</div></div>
-  </div>
-
-  <div class="cenario-box">
-    <div class="cenario-title">🌟 Cenário Macroeconômico Atual</div>
-    <div class="cenario-text" id="cenario-desc">—</div>
-  </div>
-
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">📊 Comparativo de Indicadores</div>
-      <div class="chart-container"><canvas id="chart-macro-bar"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title">📉 Inadimplência PJ vs PF</div>
-      <div class="chart-container"><canvas id="chart-inad"></canvas></div>
-    </div>
-  </div>
-</section>
-
-<!-- ─── CLIENTES ─── -->
-<section id="page-clientes" class="page">
-  <div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value" id="kc-total">—</div><div class="kpi-sub">clientes cadastrados</div></div>
-    <div class="kpi-card success"><div class="kpi-label">Conservadores</div><div class="kpi-value" id="kc-cons">—</div><div class="kpi-sub" id="kc-cons-pct">—</div></div>
-    <div class="kpi-card accent"><div class="kpi-label">Moderados</div><div class="kpi-value" id="kc-mod">—</div><div class="kpi-sub" id="kc-mod-pct">—</div></div>
-    <div class="kpi-card info"><div class="kpi-label">Arrojados</div><div class="kpi-value" id="kc-arr">—</div><div class="kpi-sub" id="kc-arr-pct">—</div></div>
-  </div>
-
-  <div class="card" style="margin-bottom:24px">
-    <div class="filter-row">
-      <input type="text" id="f-cli-busca" class="input" placeholder="🔍 Buscar por nome ou CPF">
-      <select id="f-cli-perfil" class="input">
-        <option value="">Perfil: todos</option>
-        <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">📋 Base de clientes</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Nome</th><th>CPF</th><th>Idade</th><th>Perfil</th>
-          <th>Score perfil</th><th>Experiência</th><th>Horizonte</th><th>Cadastro</th>
-        </tr></thead>
-        <tbody id="tbody-clientes"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- ─── MATCH ─── -->
-<section id="page-match" class="page">
-  <div class="card" style="margin-bottom:24px">
-    <div class="filter-row">
-      <select id="f-match-cliente" class="input" style="min-width:280px">
-        <option value="">Selecione um cliente…</option>
-      </select>
-      <select id="f-match-perfil" class="input">
-        <option value="">Perfil do cliente: todos</option>
-        <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
-      </select>
-      <button class="seg-btn active" id="f-match-clear">Limpar</button>
-    </div>
-  </div>
-
-  <div id="match-cards"></div>
-
-  <div class="card" style="margin-top:24px">
-    <div class="card-title" id="match-table-title">Todos os matches</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>#</th><th>Cliente</th><th>Perfil</th><th>Fundo recomendado</th>
-          <th>Cota</th><th>Risco</th><th>Retorno</th><th>Match</th><th>Motivo</th>
-        </tr></thead>
-        <tbody id="tbody-match"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- ─── CREDIT SCORING ─── -->
-<section id="page-credit" class="page">
-  <div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-label">Empresas avaliadas</div><div class="kpi-value" id="kr-total">—</div><div class="kpi-sub">com modelo de inadimplência</div></div>
-    <div class="kpi-card success"><div class="kpi-label">Risco baixo</div><div class="kpi-value" id="kr-baixo">—</div><div class="kpi-sub" id="kr-baixo-pct">—</div></div>
-    <div class="kpi-card accent"><div class="kpi-label">Risco médio</div><div class="kpi-value" id="kr-medio">—</div><div class="kpi-sub" id="kr-medio-pct">—</div></div>
-    <div class="kpi-card danger"><div class="kpi-label">Risco alto</div><div class="kpi-value" id="kr-alto">—</div><div class="kpi-sub" id="kr-alto-pct">—</div></div>
-  </div>
-
-  <div class="grid-2" style="margin-bottom:24px">
-    <div class="card">
-      <div class="card-title">🍩 Distribuição de risco de crédito</div>
-      <div class="chart-container"><canvas id="chart-credit-donut"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title">📊 Modelo</div>
-      <div style="font-size:0.9rem;color:var(--ink-700);line-height:1.7">
-        <p><strong>Algoritmo:</strong> XGBoost (gradient boosting) com 5-fold cross-validation.</p>
-        <p><strong>Features:</strong> total de boletos, valor médio, atraso médio, % atraso 1–30d, índice de liquidez (sacado/cedente), CNAE, UF, score quantidade/materialidade.</p>
-        <p><strong>Target:</strong> default = boleto protestado, vencido sem pagamento ou atraso &gt; 30 dias.</p>
-        <p><strong>Saída:</strong> score 0–100 (quanto maior, menor o risco) e classificação <span class="badge badge-A">BAIXO</span> <span class="badge badge-B">MÉDIO</span> <span class="badge badge-D">ALTO</span>.</p>
+        <div class="theme-menu" id="theme-menu" role="menu" hidden>
+          <div class="theme-menu-title">Aparência</div>
+          <button class="theme-option" data-mode="system" role="menuitemradio">
+            <svg class="opt-icon"><use href="#icon-monitor"/></svg>
+            <span>Sistema</span>
+            <svg class="opt-check"><use href="#icon-check"/></svg>
+          </button>
+          <button class="theme-option" data-mode="light" role="menuitemradio">
+            <svg class="opt-icon"><use href="#icon-sun"/></svg>
+            <span>Claro</span>
+            <svg class="opt-check"><use href="#icon-check"/></svg>
+          </button>
+          <button class="theme-option" data-mode="dark" role="menuitemradio">
+            <svg class="opt-icon"><use href="#icon-moon"/></svg>
+            <span>Escuro</span>
+            <svg class="opt-check"><use href="#icon-check"/></svg>
+          </button>
+        </div>
       </div>
+
+      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Colapsar sidebar" data-tooltip="Colapsar (⌘\)">
+        <svg><use href="#icon-chevron-left"/></svg>
+      </button>
     </div>
+  </aside>
+
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <!-- ═══ SHELL: TOPBAR + CONTENT + FOOTER ═══════════════════════ -->
+  <div class="shell">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <button class="icon-btn" id="mobile-menu" aria-label="Abrir menu">
+        <svg><use href="#icon-menu"/></svg>
+      </button>
+
+      <div class="topbar-breadcrumb">
+        <span class="muted">Radar FIDC</span>
+        <svg><use href="#icon-chevron-right"/></svg>
+        <strong id="breadcrumb-current">Visão geral</strong>
+      </div>
+
+      <div class="topbar-spacer"></div>
+    </header>
+
+    <!-- ═══ MAIN CONTENT ═════════════════════════════════════════ -->
+    <main class="content" id="main">
+
+      <!-- ─── VISÃO GERAL ─── -->
+      <section id="page-overview" class="page active">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Visão geral</h1>
+            <div class="page-subtitle">Indicadores consolidados de FIDCs, clientes e crédito.</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label"><svg><use href="#icon-landmark"/></svg> FIDCs analisados</div>
+            <div class="kpi-value" id="kpi-fundos">—</div>
+            <div class="kpi-sub" id="kpi-classes">—</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label"><svg><use href="#icon-users"/></svg> Clientes cadastrados</div>
+            <div class="kpi-value" id="kpi-clientes">—</div>
+            <div class="kpi-sub" id="kpi-clientes-perfis">—</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label"><svg><use href="#icon-card"/></svg> Empresas avaliadas</div>
+            <div class="kpi-value" id="kpi-empresas">—</div>
+            <div class="kpi-sub" id="kpi-credit-default">—</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label"><svg><use href="#icon-pulse"/></svg> SELIC atual</div>
+            <div class="kpi-value" id="kpi-selic">—</div>
+            <div class="kpi-sub" id="kpi-cenario">—</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title"><svg><use href="#icon-pie"/></svg> Distribuição dos FIDCs por risco</div>
+            <div class="chart-container"><canvas id="chart-risco"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><svg><use href="#icon-pie"/></svg> Perfil sugerido (todos os FIDCs)</div>
+            <div class="chart-container"><canvas id="chart-perfil"></canvas></div>
+          </div>
+        </div>
+
+        <div class="section-title">
+          <svg><use href="#icon-bar"/></svg>
+          Top 10 FIDCs por menor risco com retorno positivo
+        </div>
+        <div class="card" style="margin-bottom:24px">
+          <div class="chart-container tall"><canvas id="chart-top10"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg><use href="#icon-ranking"/></svg> Ranking — fundos mais recomendados nos matches</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Fundo</th><th>Cota</th><th>Risco</th><th>Retorno a.a.</th>
+                <th>Recomendado</th><th>Match médio</th>
+              </tr></thead>
+              <tbody id="tbody-ranking"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── FIDCs ─── -->
+      <section id="page-fidcs" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">FIDCs</h1>
+            <div class="page-subtitle">Base ANBIMA + classificação de risco, retorno e cota.</div>
+          </div>
+        </div>
+
+        <div class="card card-compact" style="margin-bottom:20px">
+          <div class="filter-row">
+            <div class="input-icon">
+              <svg><use href="#icon-search"/></svg>
+              <input type="text" id="f-fidc-busca" class="input" placeholder="Buscar por nome do fundo ou CNPJ">
+            </div>
+            <select id="f-fidc-risco" class="select">
+              <option value="">Risco: todos</option>
+              <option value="BAIXO">Baixo</option><option value="MEDIO">Médio</option><option value="ALTO">Alto</option>
+            </select>
+            <select id="f-fidc-cota" class="select">
+              <option value="">Cota: todas</option>
+              <option value="SENIOR">Sênior</option><option value="MEZANINO">Mezanino</option>
+              <option value="JUNIOR">Júnior</option><option value="UNICA">Única</option>
+            </select>
+            <select id="f-fidc-perfil" class="select">
+              <option value="">Perfil: todos</option>
+              <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
+            </select>
+            <button class="btn btn-ghost" id="f-fidc-clear">Limpar</button>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:20px">
+          <div class="card">
+            <div class="card-title"><svg><use href="#icon-scatter"/></svg> Retorno × Score de risco</div>
+            <div class="chart-container tall"><canvas id="chart-scatter"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><svg><use href="#icon-bar"/></svg> Distribuição por tipo de cota</div>
+            <div class="chart-container tall"><canvas id="chart-cota"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" id="fidcs-count">FIDCs filtrados</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Fundo</th><th>Cota</th><th>Risco</th><th class="num">Score</th>
+                <th>Perfil</th><th class="num">Retorno a.a.</th><th class="num">Vol.</th><th class="num">Inad.</th><th class="num">Hist.</th>
+              </tr></thead>
+              <tbody id="tbody-fidcs"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── CENÁRIO MACRO ─── -->
+      <section id="page-macro" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Cenário macroeconômico</h1>
+            <div class="page-subtitle">SELIC, CDI, IPCA e projeções. Fonte: BCB.</div>
+          </div>
+        </div>
+
+        <div class="macro-grid">
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-activity"/></svg> SELIC Meta</div>
+            <div class="macro-value" id="m-selic">—</div>
+            <div class="macro-unit">% ao ano</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-activity"/></svg> CDI</div>
+            <div class="macro-value" id="m-cdi">—</div>
+            <div class="macro-unit">% ao ano</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-trending"/></svg> IPCA 12m</div>
+            <div class="macro-value" id="m-ipca">—</div>
+            <div class="macro-unit">% acumulado</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-label"><svg><use href="#icon-pulse"/></svg> SELIC projetada</div>
+            <div class="macro-value" id="m-selic-proj">—</div>
+            <div class="macro-unit">próximos 12m</div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <svg><use href="#icon-activity"/></svg>
+          <div>
+            <div class="callout-title">Cenário macroeconômico atual</div>
+            <div class="callout-text" id="cenario-desc">—</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title"><svg><use href="#icon-bar"/></svg> Comparativo de indicadores</div>
+            <div class="chart-container"><canvas id="chart-macro-bar"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><svg><use href="#icon-trending"/></svg> Inadimplência PJ vs PF</div>
+            <div class="chart-container"><canvas id="chart-inad"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── CLIENTES ─── -->
+      <section id="page-clientes" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Clientes</h1>
+            <div class="page-subtitle">Base de PMEs e investidores classificados por perfil suitability.</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label"><svg><use href="#icon-users"/></svg> Total</div>
+            <div class="kpi-value" id="kc-total">—</div>
+            <div class="kpi-sub">clientes cadastrados</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Conservadores</div>
+            <div class="kpi-value" id="kc-cons">—</div>
+            <div class="kpi-sub" id="kc-cons-pct">—</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Moderados</div>
+            <div class="kpi-value" id="kc-mod">—</div>
+            <div class="kpi-sub" id="kc-mod-pct">—</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Arrojados</div>
+            <div class="kpi-value" id="kc-arr">—</div>
+            <div class="kpi-sub" id="kc-arr-pct">—</div>
+          </div>
+        </div>
+
+        <div class="card card-compact" style="margin-bottom:20px">
+          <div class="filter-row">
+            <div class="input-icon">
+              <svg><use href="#icon-search"/></svg>
+              <input type="text" id="f-cli-busca" class="input" placeholder="Buscar por nome ou CPF">
+            </div>
+            <select id="f-cli-perfil" class="select">
+              <option value="">Perfil: todos</option>
+              <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg><use href="#icon-users"/></svg> Base de clientes</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Nome</th><th>CPF</th><th class="num">Idade</th><th>Perfil</th>
+                <th class="num">Score perfil</th><th>Experiência</th><th>Horizonte</th><th>Cadastro</th>
+              </tr></thead>
+              <tbody id="tbody-clientes"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── MATCH / RECOMENDAÇÕES ─── -->
+      <section id="page-match" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Recomendações</h1>
+            <div class="page-subtitle">Casamento entre perfil do cliente e FIDCs aderentes.</div>
+          </div>
+        </div>
+
+        <div class="card card-compact" style="margin-bottom:20px">
+          <div class="filter-row">
+            <select id="f-match-cliente" class="select" style="min-width:280px">
+              <option value="">Selecione um cliente…</option>
+            </select>
+            <select id="f-match-perfil" class="select">
+              <option value="">Perfil: todos</option>
+              <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>
+            </select>
+            <button class="btn btn-ghost" id="f-match-clear">Limpar</button>
+          </div>
+        </div>
+
+        <div id="match-cards"></div>
+
+        <div class="card" style="margin-top:24px">
+          <div class="card-title" id="match-table-title">Todas as recomendações</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="num">#</th><th>Cliente</th><th>Perfil</th><th>Fundo recomendado</th>
+                <th>Cota</th><th>Risco</th><th class="num">Retorno</th><th class="num">Match</th><th>Motivo</th>
+              </tr></thead>
+              <tbody id="tbody-match"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── CREDIT SCORING ─── -->
+      <section id="page-credit" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Credit scoring</h1>
+            <div class="page-subtitle">Modelo XGBoost para inadimplência em direitos creditórios.</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label"><svg><use href="#icon-card"/></svg> Empresas avaliadas</div>
+            <div class="kpi-value" id="kr-total">—</div>
+            <div class="kpi-sub">com modelo de inadimplência</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Risco baixo</div>
+            <div class="kpi-value" id="kr-baixo">—</div>
+            <div class="kpi-sub" id="kr-baixo-pct">—</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Risco médio</div>
+            <div class="kpi-value" id="kr-medio">—</div>
+            <div class="kpi-sub" id="kr-medio-pct">—</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Risco alto</div>
+            <div class="kpi-value" id="kr-alto">—</div>
+            <div class="kpi-sub" id="kr-alto-pct">—</div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:20px">
+          <div class="card">
+            <div class="card-title"><svg><use href="#icon-pie"/></svg> Distribuição de risco de crédito</div>
+            <div class="chart-container"><canvas id="chart-credit-donut"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><svg><use href="#icon-cpu"/></svg> Modelo</div>
+            <div class="model-info">
+              <div class="row"><div class="label">Algoritmo</div><div>XGBoost (gradient boosting) com 5-fold cross-validation.</div></div>
+              <div class="row"><div class="label">Features</div><div>Total de boletos, valor médio, atraso médio, % atraso 1–30d, índice de liquidez (sacado/cedente), CNAE, UF, score quantidade/materialidade.</div></div>
+              <div class="row"><div class="label">Target</div><div>Default = boleto protestado, vencido sem pagamento ou atraso &gt; 30 dias.</div></div>
+              <div class="row"><div class="label">Saída</div><div>Score 0–100 (quanto maior, menor o risco) e classificação <span class="badge badge-A">Baixo</span> <span class="badge badge-B">Médio</span> <span class="badge badge-D">Alto</span>.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-compact" style="margin-bottom:20px">
+          <div class="filter-row">
+            <select id="f-credit-risco" class="select">
+              <option value="">Risco: todos</option>
+              <option value="BAIXO">Baixo</option><option value="MEDIO">Médio</option><option value="ALTO">Alto</option>
+            </select>
+            <div class="input-icon">
+              <svg><use href="#icon-search"/></svg>
+              <input type="text" id="f-credit-busca" class="input" placeholder="Buscar por id_cnpj">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" id="credit-count">Empresas (amostra)</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>ID</th><th class="num">Score</th><th class="num">Prob. default</th><th>Risco</th>
+                <th class="num">Total boletos</th><th class="num">Defaults</th><th class="num">% default</th>
+              </tr></thead>
+              <tbody id="tbody-credit"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <div><strong>Radar FIDC</strong> · Data Fishermans · FIAP Sprint Final 2026</div>
+      <div>Dados ANBIMA + BCB + CVM + base proprietária</div>
+    </footer>
+
   </div>
-
-  <div class="card" style="margin-bottom:24px">
-    <div class="filter-row">
-      <select id="f-credit-risco" class="input">
-        <option value="">Risco: todos</option>
-        <option value="BAIXO">BAIXO</option><option value="MEDIO">MÉDIO</option><option value="ALTO">ALTO</option>
-      </select>
-      <input type="text" id="f-credit-busca" class="input" placeholder="🔍 Buscar por id_cnpj">
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title" id="credit-count">Empresas (amostra)</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>ID</th><th>Score</th><th>Prob. default</th><th>Risco</th>
-          <th>Total boletos</th><th>Defaults</th><th>% default histórico</th>
-        </tr></thead>
-        <tbody id="tbody-credit"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-</main>
-
-<footer>
-  <strong>Radar FIDC</strong> — Data Fishermans | FIAP Sprint Final 2026 |
-  Dados reais: ANBIMA + BCB + CVM + base proprietária |
-  Atualizado em <span id="footer-date">—</span>
-</footer>
+</div>
 
 </body>
 </html>

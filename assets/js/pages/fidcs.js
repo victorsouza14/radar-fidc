@@ -1,10 +1,6 @@
-// Página FIDCs.
-//   init:  tabela + binds dos filtros (tabela responde a filter sem criar chart).
-//   mount: scatter + pie (1ª visita). Mudanças de filtro depois disso atualizam tudo.
-
 import { Store } from "../store.js";
 import { fmtNum, fmtPct, escapeHTML } from "../utils/format.js";
-import { setText, onInput, onChange, onClick, debounce } from "../utils/dom.js";
+import { setText, onInput, onChange, onClick, resetField, debounce } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
 import { riscoColor, riscoBadge, perfilColor, cotaColor } from "../theme.js";
 import { scatter, pie } from "../components/chart-factory.js";
@@ -15,7 +11,7 @@ const RETORNO_MAX = 200;
 const TABLE_LIMIT = 200;
 const SCATTER_MAX = 400;
 
-let _mounted = false;  // só desenha charts depois do mount()
+let _mounted = false;
 
 const state = { busca: "", risco: "", cota: "", perfil: "" };
 const stateKey = (s) => `${s.busca}|${s.risco}|${s.cota}|${s.perfil}`;
@@ -92,9 +88,9 @@ function renderPieCotas(filtered) {
   pie("chart-cota", keys, keys.map(k => cotaCount[k]), keys.map(k => cotaColor(k)));
 }
 
-// Atualiza tabela imediatamente; charts em rAF para não bloquear o input.
+// Tabela render imediato; charts debounce+rAF para não bloquear typing nos filtros.
 const scheduleCharts = debounce((filtered) => {
-  if (!_mounted) return;   // não tenta desenhar antes do mount inicial
+  if (!_mounted) return;
   requestAnimationFrame(() => {
     renderScatter(filtered);
     renderPieCotas(filtered);
@@ -112,12 +108,9 @@ function bindFilters() {
   onChange("f-fidc-risco",  v => { state.risco  = v; onStateChange(); });
   onChange("f-fidc-cota",   v => { state.cota   = v; onStateChange(); });
   onChange("f-fidc-perfil", v => { state.perfil = v; onStateChange(); });
-  onClick("f-fidc-clear",   () => {
+  onClick("f-fidc-clear", () => {
     state.busca = state.risco = state.cota = state.perfil = "";
-    ["f-fidc-busca", "f-fidc-risco", "f-fidc-cota", "f-fidc-perfil"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = "";
-    });
+    ["f-fidc-busca", "f-fidc-risco", "f-fidc-cota", "f-fidc-perfil"].forEach(id => resetField(id));
     onStateChange();
   });
 }

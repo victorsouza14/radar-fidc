@@ -1,5 +1,3 @@
-// Página Credit Scoring — KPIs + donut + tabela com filtros.
-
 import { Store } from "../store.js";
 import { fmtInt, fmtNum, fmtPct, escapeHTML } from "../utils/format.js";
 import { setText, onInput, onChange } from "../utils/dom.js";
@@ -27,7 +25,7 @@ const applyFilters = memoize((s) => {
 
 const rowTpl = (e) => `
   <tr>
-    <td style="font-family:monospace;font-size:0.74rem;color:var(--ink-500)">${escapeHTML(e.id_cnpj)}</td>
+    <td style="font-family:monospace;font-size:0.74rem;color:var(--fg-subtle)">${escapeHTML(e.id_cnpj)}</td>
     <td><strong>${fmtNum(e.score)}</strong></td>
     <td>${fmtPct((e.prob_default ?? 0) * 100, 2)}</td>
     <td><span class="badge ${riscoBadge(e.risco)}">${escapeHTML(e.risco)}</span></td>
