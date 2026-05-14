@@ -40,7 +40,6 @@ function renderKPIs() {
 // Os IDs `*-overview` evitam colisão com IDs históricos preservados em
 // outras telas/integrações (mesmo após remoção da seção page-macro).
 const PCT2 = (v) => fmtPct(v, 2);
-const BRL = (v) => (v == null ? "—" : `R$ ${Number(v).toFixed(2).replace(".", ",")}`);
 
 function renderMacroKPIs() {
   const m = Store.macro();
@@ -49,8 +48,6 @@ function renderMacroKPIs() {
   setText("m-ipca-overview",       PCT2(m.ipca));
   setText("m-selic-proj-overview", fmtPct(m.selic_proj));
   setText("m-ipca-proj-overview",  PCT2(m.ipca_proj));
-  setText("m-inad-pj-overview",    PCT2(m.inadimplencia_pj));
-  setText("m-dolar-overview",      BRL(m.dolar_venda));
 }
 
 const rankingRow = (r) => `
