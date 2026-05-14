@@ -6,8 +6,6 @@ import { renderFetchError } from "./components/fetch-error.js";
 
 import * as overview from "./pages/overview.js";
 import * as fidcs    from "./pages/fidcs.js";
-import * as macro    from "./pages/macro.js";
-import * as clientes from "./pages/clientes.js";
 import * as match    from "./pages/match.js";
 import * as credit   from "./pages/credit.js";
 
@@ -35,8 +33,6 @@ async function boot() {
 
   router.register("overview", { init: overview.init, mount: overview.mount });
   router.register("fidcs",    { init: fidcs.init,    mount: fidcs.mount });
-  router.register("macro",    { init: macro.init,    mount: macro.mount });
-  router.register("clientes", { init: clientes.init });
   router.register("match",    { init: match.init });
   router.register("credit",   { init: credit.init,   mount: credit.mount });
 

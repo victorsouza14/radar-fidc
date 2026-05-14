@@ -35,6 +35,24 @@ function renderKPIs() {
   setText("footer-date", m.data_ref || "—");
 }
 
+// Indicadores macro informativos: exibidos como cards na visão geral
+// para substituir a antiga aba "Cenário macroeconômico" (removida).
+// Os IDs `*-overview` evitam colisão com IDs históricos preservados em
+// outras telas/integrações (mesmo após remoção da seção page-macro).
+const PCT2 = (v) => fmtPct(v, 2);
+const BRL = (v) => (v == null ? "—" : `R$ ${Number(v).toFixed(2).replace(".", ",")}`);
+
+function renderMacroKPIs() {
+  const m = Store.macro();
+  setText("m-selic-overview",      fmtPct(m.selic));
+  setText("m-cdi-overview",        fmtPct(m.cdi));
+  setText("m-ipca-overview",       PCT2(m.ipca));
+  setText("m-selic-proj-overview", fmtPct(m.selic_proj));
+  setText("m-ipca-proj-overview",  PCT2(m.ipca_proj));
+  setText("m-inad-pj-overview",    PCT2(m.inadimplencia_pj));
+  setText("m-dolar-overview",      BRL(m.dolar_venda));
+}
+
 const rankingRow = (r) => `
   <tr>
     <td class="cell-truncate" title="${escapeHTML(r.fundo)}">${escapeHTML(r.fundo)}</td>
@@ -95,6 +113,7 @@ function renderTop10() {
 
 export function init() {
   renderKPIs();
+  renderMacroKPIs();
   renderRanking();
 }
 
