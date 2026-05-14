@@ -35,10 +35,15 @@ const STATE_META = {
     label: "Dados confiáveis",
     fullLabel: "Pipeline saudável e dados atualizados",
   },
-  error: {
+  error_pipeline: {
     icon: "⛔",                       // ⛔
     label: "Erro na pipeline",
     fullLabel: "Falha de qualidade detectada — verificar runbook",
+  },
+  error_freshness: {
+    icon: "⛔",                       // ⛔
+    label: "Dados desatualizados",
+    fullLabel: "Fonte de dados além do threshold — pipeline ETL pode estar travada",
   },
   unknown: {
     icon: "ℹ",                       // ℹ
@@ -46,6 +51,8 @@ const STATE_META = {
     fullLabel: "Manifesto de qualidade não pôde ser carregado",
   },
 };
+// Alias de compatibilidade — código legado e CSS data-state usam "error".
+STATE_META.error = STATE_META.error_pipeline;
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({
@@ -74,7 +81,8 @@ function pickState(manifest) {
     (entry) => entry && entry.status === "error"
   );
 
-  if (pipelineFailed || sourceFailed) return "error";
+  if (pipelineFailed) return "error_pipeline";
+  if (sourceFailed) return "error_freshness";
 
   // overall_success === true OU não declarado, e nenhum source com erro.
   return "ok";
@@ -229,7 +237,11 @@ export async function renderTrustBar(rootSelector = "body") {
   bar.setAttribute("aria-expanded", "false");
   bar.setAttribute("aria-controls", PANEL_ID);
   bar.setAttribute("tabindex", "0");
-  bar.setAttribute("data-state", state);
+  // CSS only knows ok|error|unknown — map the two error sub-states to "error"
+  // but expose the precise variant via data-state-detail for diagnostics/tooling.
+  const cssState = state.startsWith("error") ? "error" : state;
+  bar.setAttribute("data-state", cssState);
+  bar.setAttribute("data-state-detail", state);
   bar.setAttribute("data-trust-bar", "true");
 
   bar.innerHTML = `

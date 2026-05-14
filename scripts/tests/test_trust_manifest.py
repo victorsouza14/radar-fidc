@@ -22,15 +22,15 @@ def macro_df_today() -> pd.DataFrame:
 
 @pytest.fixture
 def macro_df_stale_warn() -> pd.DataFrame:
-    """3 dias atrás → entre 2d (warn) e 7d (error) para a fonte 'macro'."""
-    old = pd.Timestamp.now("UTC").tz_localize(None).normalize() - pd.Timedelta(days=3)
+    """40 dias atrás → entre 35d (warn) e 75d (error) para a fonte 'macro'."""
+    old = pd.Timestamp.now("UTC").tz_localize(None).normalize() - pd.Timedelta(days=40)
     return pd.DataFrame({"data_processamento": [old], "selic_meta": [13.75]})
 
 
 @pytest.fixture
 def macro_df_stale_error() -> pd.DataFrame:
-    """10 dias atrás → acima do threshold 'error' de 7d para a fonte 'macro'."""
-    old = pd.Timestamp.now("UTC").tz_localize(None).normalize() - pd.Timedelta(days=10)
+    """80 dias atrás → acima do threshold 'error' de 75d para a fonte 'macro'."""
+    old = pd.Timestamp.now("UTC").tz_localize(None).normalize() - pd.Timedelta(days=80)
     return pd.DataFrame({"data_processamento": [old], "selic_meta": [13.75]})
 
 

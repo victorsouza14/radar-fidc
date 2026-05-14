@@ -36,9 +36,22 @@ from typing import Any
 import pandas as pd
 
 # Thresholds por fonte (em dias) — Seção 4 da spec.
-# (warn_days, error_days). Variação >= threshold acende o flag correspondente.
+# (warn_days, error_days). Idade >= threshold acende o flag correspondente.
+#
+# Justificativa por fonte:
+# - macro: BCB SGS mistura indicadores mensais (IPCA, inadimplência) e
+#   diários (SELIC, CDI). O `data_processamento` mais recente reflete o
+#   IPCA mensal — que sai uma vez por mês (~30-45 dias entre publicações).
+#   Threshold (35, 75) tolera o ciclo natural de publicação sem dar
+#   falso-positivo de "pipeline travada".
+# - focus: Boletim Focus do BCB sai semanalmente (segunda-feira).
+#   (7, 14) é o range realista do produto.
+# - anbima: cadastros e séries diárias.
+# - cda: composição da carteira da CVM, mensal (M-1).
+# - credit_model: ciclo trimestral de retrain.
 FRESHNESS_THRESHOLDS: dict[str, tuple[int, int]] = {
-    "macro": (2, 7),  # BCB/SGS — diário
+    "macro": (35, 75),  # BCB SGS — mensal (IPCA dita a cadência)
+    "focus": (7, 14),  # Boletim Focus — semanal
     "anbima": (2, 7),  # ANBIMA — diário
     "cda": (40, 60),  # CVM CDA — mensal
     "credit_model": (100, 180),  # retrain trimestral
@@ -143,6 +156,27 @@ def _freshness_from_df(
     }
 
 
+def _freshness_from_iso_date(iso_str: str | None, source_key: str) -> dict[str, Any]:
+    """Freshness a partir de uma data ISO solta (ex.: ``proj_date`` do Focus).
+
+    Devolve ``not_run`` quando ``iso_str`` é ``None`` ou inválido — usado
+    quando a fonte ainda não foi populada (ex.: Boletim Focus antes do
+    primeiro ETL).
+    """
+    if not iso_str:
+        return {"data_ref": None, "age_days": None, "status": "not_run"}
+    ts = pd.to_datetime(iso_str, errors="coerce")
+    if pd.isna(ts):
+        return {"data_ref": str(iso_str), "age_days": None, "status": "error", "reason": "invalid_date"}
+    today = pd.Timestamp.now("UTC").tz_localize(None).normalize()
+    age = max(0, int((today - ts.normalize()).days))
+    return {
+        "data_ref": ts.normalize().date().isoformat(),
+        "age_days": age,
+        "status": _classify_age(age, source_key),
+    }
+
+
 def _normalize_pipeline_result(raw: dict[str, Any] | None) -> dict[str, Any]:
     """Lida com o blob ``expectations-result.json`` ausente ou presente.
 
@@ -179,6 +213,7 @@ def build_manifest(
     schema_validation_ok: bool,
     regression_check_result: str,
     smoke_tests_result: str,
+    focus_indicators: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Monta o dict do ``data-quality.json``.
 
@@ -204,6 +239,10 @@ def build_manifest(
         },
         "data_freshness": {
             "macro": _freshness_from_df(macro_df, "macro"),
+            "focus": _freshness_from_iso_date(
+                str(focus_indicators.get("proj_date")) if focus_indicators else None,
+                "focus",
+            ),
         },
         "row_counts": {
             "fidcs": len(geral_df),

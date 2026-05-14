@@ -100,6 +100,7 @@ def build_all() -> tuple[dict, dict]:
         "clientes": df_clientes,
         "credit": df_credit,
         "macro": df_macro,
+        "focus_indicators": focus_indicators,
     }
 
     return payload_dict, raw_dfs
@@ -175,6 +176,7 @@ def main() -> int:
         schema_validation_ok=True,  # se chegou aqui, todos os schemas passaram
         regression_check_result=args.regression_result,
         smoke_tests_result=args.smoke_result,
+        focus_indicators=raw_dfs.get("focus_indicators"),
     )
     write_json(quality_out, manifest)
     log.info(
