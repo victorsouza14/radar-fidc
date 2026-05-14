@@ -4,6 +4,7 @@ import { setText, setHTML, byId, onChange, onClick, resetField } from "../utils/
 import { memoize } from "../utils/memo.js";
 import { perfilColor, riscoBadge, rankBadgeClass } from "../theme.js";
 import { createPaginatedTable } from "../components/paginated-table.js";
+import { renderEmptyState } from "../components/empty-state.js";
 
 const TOP_N = 5;
 
@@ -61,13 +62,50 @@ function renderCards() {
   const wrap = byId("match-cards");
   if (!wrap) return;
 
-  if (!state.cpf) { wrap.innerHTML = ""; return; }
+  if (!state.cpf) {
+    wrap.innerHTML = renderEmptyState({
+      title: "Selecione um cliente",
+      description: "Escolha um cliente no seletor acima para ver as recomendações top-5 personalizadas com base no perfil suitability.",
+      suggestions: [
+        "Use o seletor \"Selecione um cliente…\" no topo",
+        "Ou filtre por perfil para ver recomendações agrupadas",
+      ],
+    });
+    return;
+  }
+
   const cliente = Store.clientes.findByCpf(state.cpf);
-  if (!cliente) { wrap.innerHTML = ""; return; }
+  if (!cliente) {
+    wrap.innerHTML = renderEmptyState({
+      title: "Cliente não encontrado",
+      description: "O CPF selecionado não está presente na base atual de clientes.",
+      suggestions: [
+        "Limpar filtros e selecionar outro cliente",
+        "Verificar se a base foi atualizada na última pipeline",
+      ],
+    });
+    return;
+  }
 
   const top = Store.matches.byCpf(state.cpf)
     .sort((a, b) => a.rank - b.rank)
     .slice(0, TOP_N);
+
+  if (top.length === 0) {
+    wrap.innerHTML = `
+      ${clientHeaderTpl(cliente)}
+      ${renderEmptyState({
+        title: "Sem FIDCs compatíveis",
+        description: "Nenhum fundo aderente ao perfil deste cliente foi encontrado após os filtros do match engine.",
+        suggestions: [
+          "Revisar segmento da PME",
+          "Considerar qualificação como investidor qualificado/profissional",
+          "Ampliar tolerância a risco no perfil suitability",
+        ],
+      })}
+    `;
+    return;
+  }
 
   setHTML("match-cards", `
     ${clientHeaderTpl(cliente)}
@@ -135,6 +173,7 @@ function bindFilters() {
 
 export function init() {
   populateClienteSelect();
+  renderCards();
   table.render(applyFilters(state));
   bindFilters();
 }

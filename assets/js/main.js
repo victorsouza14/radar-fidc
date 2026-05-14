@@ -2,6 +2,8 @@ import { load } from "./store.js";
 import * as router from "./router.js";
 import { bootUI } from "./ui.js";
 import { enhanceAllSelects } from "./components/select.js";
+import { renderTrustBar } from "./components/trust-bar.js";
+import { renderFetchError } from "./components/fetch-error.js";
 
 import * as overview from "./pages/overview.js";
 import * as fidcs    from "./pages/fidcs.js";
@@ -14,16 +16,21 @@ function showError(message) {
   document.querySelectorAll(".kpi-value").forEach(el => { el.textContent = "—"; });
   const main = document.getElementById("main");
   if (!main) return;
-  const banner = document.createElement("div");
-  banner.className = "error-banner";
-  banner.innerHTML =
-    `<strong>Falha ao carregar dados:</strong> ${message}<br>` +
-    `Verifique se <code>data.json</code> existe na raiz e foi gerado pelo pipeline.`;
+  const banner = renderFetchError({
+    message,
+    onRetry: () => window.location.reload(),
+  });
   main.prepend(banner);
 }
 
 async function boot() {
   bootUI();
+
+  // Trust bar é independente do data.json — renderiza primeiro para que o
+  // usuário sempre veja o status, mesmo se o payload principal falhar.
+  renderTrustBar("body").catch((e) => {
+    console.warn("[Radar] trust-bar falhou:", e);
+  });
 
   try {
     await load();

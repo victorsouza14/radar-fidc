@@ -1,3 +1,5 @@
+import { cacheData } from "./components/fetch-error.js";
+
 const DATA_URL = "data.json";
 
 let _data = null;
@@ -19,6 +21,9 @@ export async function load() {
   if (!res.ok) throw new Error(`HTTP ${res.status} ao carregar ${DATA_URL}`);
   const json = await res.json();
   if (!isValid(json)) throw new Error(`Payload de ${DATA_URL} com shape inválido.`);
+  // Cache do payload bem-sucedido — usado pelo fetch-error em caso de
+  // falha futura para exibir "última cópia conhecida".
+  cacheData(json);
   _data = Object.freeze(json);
   return _data;
 }

@@ -4,6 +4,7 @@ import { setText, onInput, onChange } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
 import { perfilColor } from "../theme.js";
 import { renderTable } from "../components/table.js";
+import { renderEmptyState } from "../components/empty-state.js";
 
 const EXPERIENCIA = ["Iniciante", "Intermediária", "Avançada"];
 const HORIZONTE   = ["< 1 ano", "1–3 anos", "> 3 anos"];
@@ -57,6 +58,26 @@ function bindFilters() {
 
 export function init() {
   renderKPIs();
+
+  // Empty state defensivo: se o pipeline não trouxe nenhum cliente,
+  // substituímos a tabela inteira por um bloco amigável. Cobre o
+  // smoke test E2E que exige tela útil mesmo com payload vazio.
+  if (!Store.clientes.lista().length) {
+    const tbody = document.getElementById("tbody-clientes");
+    const cardWrap = tbody?.closest(".card");
+    if (cardWrap) {
+      cardWrap.innerHTML = renderEmptyState({
+        title: "Sem clientes cadastrados",
+        description: "O pipeline ainda não trouxe dados de clientes para o Gold.",
+        suggestions: [
+          "Verificar a última execução em docs/operacao.md",
+          "Acionar o workflow de refresh manualmente se necessário",
+        ],
+      });
+    }
+    return;
+  }
+
   renderTabela();
   bindFilters();
 }
