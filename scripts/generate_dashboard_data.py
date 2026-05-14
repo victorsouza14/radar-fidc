@@ -2,7 +2,7 @@
 """Gera ``data.json`` e ``data-quality.json`` consumidos pelo dashboard Radar FIDC.
 
 ``data.json`` — payload do dashboard (Bronze→Silver→Gold materializado).
-``data-quality.json`` — trust manifest (Fase 2). Lado-a-lado, mesmo diretório.
+``data-quality.json`` — manifesto de auditoria do pipeline. Lado-a-lado, mesmo diretório.
 
 Uso::
 
@@ -18,8 +18,9 @@ Pré-requisitos:
 
 O ``--ge-result`` é defensivo: se não passar ou se o arquivo não existir,
 o manifesto marca ``pipeline_quality_check.status: "not_run"``. O blob
-``gold/final/_quality/expectations-result.json`` será emitido pela Fase 3
-do Databricks; até lá o status fica em ``not_run`` sem quebrar o build.
+``gold/final/_quality/expectations-result.json`` é emitido pelo notebook
+Great Expectations no Databricks; até existir, o status fica em
+``not_run`` sem quebrar o build.
 """
 
 from __future__ import annotations

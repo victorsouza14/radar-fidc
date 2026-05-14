@@ -17,11 +17,11 @@ Convenções:
   quebrar (forward compat); novos campos passam por uma revisão consciente
   ao serem usados no payload.
 
-Observações sobre o Gold real (T05 — `docs/plans/2026-05-14-radar-fidc-fase-2.md`):
+Observações sobre o Gold real (mapeado contra a snapshot 2026-05-14):
 - ``rating.SEGMENTO`` é float64 100% NaN — declarado nullable.
 - ``rating.TAXA_INADIMPLENCIA`` pode chegar a ~23k (artefato do upstream);
-  removemos o teto de 100 para não bloquear o build (registramos como
-  débito técnico em ``docs/limitacoes_atuais.md``).
+  removemos o teto de 100 para não bloquear o build (débito técnico
+  conhecido — depende de correção no Databricks).
 - ``rating.CONC_MAIOR_CEDENTE``/``CONC_TOP3`` chegam apenas como 0.0 no Gold
   atual (pendente cálculo no pipeline) — schema só verifica ``ge=0``.
 - ``matches.MATCH_SCORE``/``SCORE_CLIENTE``/``S_*``/``score_perfil`` estão
@@ -44,7 +44,7 @@ TIPO_COTA_VALUES = ("UNICA", "SENIOR", "MEZANINO", "JUNIOR", "SUBORDINADA")
 class RatingGeralSchema(pa.DataFrameModel):
     """``gold/final/rating_fidc.xlsx`` — aba GERAL.
 
-    Colunas reais (T05 — 2026-05-14): CNPJ, FUNDO, TIPO_COTA, SEGMENTO,
+    Colunas reais (snapshot 2026-05-14): CNPJ, FUNDO, TIPO_COTA, SEGMENTO,
     RISCO, SCORE_RISCO, PERFIL_SUGERIDO, RETORNO_ANUAL, VOLATILIDADE,
     RETORNO_AJ_RISCO, TAXA_INADIMPLENCIA, SCR_NORMALIZADO,
     CONC_MAIOR_CEDENTE, CONC_TOP3, MESES_HISTORICO.
@@ -62,7 +62,7 @@ class RatingGeralSchema(pa.DataFrameModel):
     # até o pipeline preencher; quando preencher, basta enxugar o ``nullable``.
     SEGMENTO: Series[float] = pa.Field(nullable=True)
     # RISCO/SCORE_RISCO têm ~36% de NaN no Gold porque o pipeline não calcula
-    # rating para fundos sem histórico mínimo. Nullable até a Fase 3.
+    # rating para fundos sem histórico mínimo. Nullable até o upstream cobrir.
     RISCO: Series[str] = pa.Field(isin=RISCO_VALUES, nullable=True)
     SCORE_RISCO: Series[float] = pa.Field(ge=0.0, le=100.0, nullable=True)
     PERFIL_SUGERIDO: Series[str] = pa.Field(isin=PERFIL_VALUES, nullable=False)
@@ -71,7 +71,7 @@ class RatingGeralSchema(pa.DataFrameModel):
     RETORNO_AJ_RISCO: Series[float] = pa.Field(nullable=True)
     # TAXA_INADIMPLENCIA chega com outliers do upstream (max ~23k). Mantemos
     # apenas o piso (não-negativo) e registramos o teto fora-de-norma como
-    # heurística a corrigir na Fase 3 (vide ``trust_manifest``).
+    # heurística a corrigir no Databricks (vide ``trust_manifest``).
     TAXA_INADIMPLENCIA: Series[float] = pa.Field(ge=0.0, nullable=True)
     SCR_NORMALIZADO: Series[float] = pa.Field(ge=0.0, le=1.0, nullable=True)
     CONC_MAIOR_CEDENTE: Series[float] = pa.Field(ge=0.0, nullable=True)
@@ -87,7 +87,7 @@ class MatchesTodosSchema(pa.DataFrameModel):
     """``gold/final/matches.xlsx`` — aba TODOS_OS_MATCHES.
 
     Todas as colunas ``S_*``, ``MATCH_SCORE`` e ``SCORE_*`` estão em escala
-    0-100 no Gold atual (vide T05 — 2026-05-14).
+    0-100 no Gold atual (snapshot 2026-05-14).
     """
 
     CPF: Series[str] = pa.Field(nullable=False)
@@ -186,7 +186,7 @@ class CreditSchema(pa.DataFrameModel):
 class MacroSchema(pa.DataFrameModel):
     """``gold/final/macroeconomicos/consolidade.csv``.
 
-    Colunas reais (T05): data_processamento, selic_meta, cdi_diario,
+    Colunas reais (snapshot 2026-05-14): data_processamento, selic_meta, cdi_diario,
     dolar_venda, ipca_mensal, igpm_mensal, incc_m, ibc_br,
     inadimplencia_total, inadimplencia_pj, inadimplencia_pf,
     utilizacao_capacidade, ic_br_agro, ic_br_energia.
@@ -195,7 +195,7 @@ class MacroSchema(pa.DataFrameModel):
     data_processamento: Series[pa.DateTime] = pa.Field(nullable=False)
     selic_meta: Series[float] = pa.Field(ge=0.0, le=50.0, nullable=True)
     # SGS 1178 — SELIC efetiva anualizada (base 252). Pode ficar NaN nas
-    # linhas historicamente importadas antes da Fase 3 (linhas mais antigas).
+    # linhas historicamente importadas antes da inclusão da série no upstream.
     selic_efetiva: Series[float] = pa.Field(ge=0.0, le=50.0, nullable=True)
     cdi_diario: Series[float] = pa.Field(ge=-1.0, le=5.0, nullable=True)
     ipca_mensal: Series[float] = pa.Field(ge=-5.0, le=30.0, nullable=True)

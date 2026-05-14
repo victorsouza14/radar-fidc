@@ -1,13 +1,13 @@
 """Regras de perfil de investidor — fonte única.
 
-Antes a mesma regra existia em 3 lugares: cadastro.py (questionário), match.py (alinhamento)
-e rating.py (perfil sugerido por tipo de cota x risco).
+Aplicada upstream (Databricks Bronze/Silver) durante a derivação da
+``CATEGORIA_RISCO`` (tercis de Tukey sobre o ``SCORE_RISCO``) e
+referenciada nos testes que congelam o contrato.
 """
 
 from __future__ import annotations
 
 # Perfil sugerido = TIPO_COTA x CATEGORIA_RISCO → PERFIL.
-# Aplicado em rating.py após o KMeans definir CATEGORIA_RISCO.
 PERFIL_SUGERIDO = {
     ("UNICA", "BAIXO"): "CONSERVADOR",
     ("UNICA", "MEDIO"): "MODERADO",

@@ -2,9 +2,9 @@
 
 Cobertura das duas tabelas centrais do match score:
 
-- ``PERFIL_SUGERIDO``: TIPO_COTA x CATEGORIA_RISCO → PERFIL (aplicado em rating.py
-  após KMeans definir CATEGORIA_RISCO);
-- ``ALINHAMENTO``: matriz cliente x fundo, 0-100, usada em match.py.
+- ``PERFIL_SUGERIDO``: TIPO_COTA x CATEGORIA_RISCO → PERFIL (aplicado após os
+  tercis de Tukey definirem a CATEGORIA_RISCO no Databricks).
+- ``ALINHAMENTO``: matriz cliente x fundo, 0-100, usada pelo match engine.
 
 Estes testes blindam invariantes documentadas no docstring do módulo —
 mudanças de calibragem precisam alterar tabela E teste no mesmo commit.

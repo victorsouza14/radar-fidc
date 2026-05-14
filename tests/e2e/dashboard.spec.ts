@@ -126,7 +126,7 @@ test.describe("Radar FIDC — smoke", () => {
   test("S2 — Score & Risco (FIDCs) renderiza gráfico e tabela", async ({ page }) => {
     await gotoTab(page, "fidcs");
 
-    // Pie chart of cotas mounts to <canvas id="chart-cota">.
+    // Risco × Retorno scatter mounts to <canvas id="chart-fidcs-scatter">.
     const canvas = page.locator("#page-fidcs canvas").first();
     await expect(canvas, "FIDCs page must render at least one chart canvas").toBeVisible();
 

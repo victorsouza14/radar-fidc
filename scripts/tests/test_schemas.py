@@ -4,8 +4,7 @@ TDD: cada schema tem (a) DataFrame válido que passa, (b) DataFrame inválido
 em pelo menos 2 dimensões que falha com ``SchemaErrors`` (lazy=True).
 
 Para isolar schema drift, esses testes NÃO batem no ADLS — usam fixtures
-sintéticas que replicam a forma do Gold mapeada em T05 (vide
-``docs/plans/2026-05-14-radar-fidc-fase-2.md``).
+sintéticas que replicam a forma do Gold mapeada na snapshot 2026-05-14.
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ import pytest
 # ─── Rating ──────────────────────────────────────────────────────────────
 @pytest.fixture
 def rating_geral_valid() -> pd.DataFrame:
-    """Replica a forma real da aba GERAL (T05).
+    """Replica a forma real da aba GERAL (snapshot 2026-05-14).
 
     CNPJ vem como int64 no Excel; o schema coage para str. SEGMENTO é 100%
     NaN no Gold atual e por isso entra como ``None``.
@@ -101,7 +100,7 @@ class TestRatingGeralSchema:
 # ─── Matches ─────────────────────────────────────────────────────────────
 @pytest.fixture
 def matches_todos_valid() -> pd.DataFrame:
-    """Replica a forma real da aba TODOS_OS_MATCHES (T05).
+    """Replica a forma real da aba TODOS_OS_MATCHES (snapshot 2026-05-14).
 
     Escalas 0-100 para ``MATCH_SCORE``, ``SCORE_CLIENTE`` e ``S_*``.
     """

@@ -198,23 +198,22 @@ Sempre que um novo cálculo aproximado entrar no payload (ex: nova projeção ma
 
 **Passo 3:** O frontend não consome `heuristic_fields` atualmente; o manifesto serve apenas para auditoria server-side. Nenhuma alteração no JS é necessária ao adicionar a heurística.
 
-**Passo 4:** Adicionar a heurística a `docs/limitacoes_atuais.md` na tabela "Heurísticas ativas", indicando a substituição planejada e a fase de eliminação.
+**Passo 4:** Documentar a heurística no PR (descrição + commit message) e referenciar no campo `replaced_in` quando ela for substituída.
 
 ---
 
-## 6. Remover uma heurística (Fase 3)
+## 6. Remover uma heurística
 
 Quando uma heurística for substituída por dado real (ex: projeções Focus do BCB substituindo `selic - 0.5`):
 
 1. Remover a entrada de `HEURISTIC_FIELDS` em `scripts/lib/trust_manifest.py`.
 2. Atualizar `scripts/lib/schemas.py` se o novo cálculo introduz campos novos (ex: `proj_source: "bcb_focus_top5"`).
-3. Mover a entrada para a seção "Histórico" de `docs/limitacoes_atuais.md`, registrando data, qual heurística saiu e o que a substituiu.
+3. Adicionar uma entrada em `REPLACED_HEURISTICS` (`scripts/lib/trust_manifest.py`) registrando data, qual heurística saiu e o que a substituiu.
 4. Rodar `python scripts/generate_dashboard_data.py` local e validar que o manifesto `data-quality.json` perdeu a entrada em `heuristic_fields` e ganhou correspondente em `replaced_heuristics`.
 
 ---
 
 ## Próximos passos
 
-- [Limitações atuais](limitacoes_atuais.md) — lista viva das heurísticas conhecidas e plano de eliminação
 - [Operação](operacao.md) — histórico auto-atualizado de runs e rotações
 - [Arquitetura](arquitetura.md) — visão geral do sistema

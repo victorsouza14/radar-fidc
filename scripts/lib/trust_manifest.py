@@ -1,6 +1,7 @@
-"""Builder do ``data-quality.json`` — manifesto de confiança consumido pelo frontend.
+"""Builder do ``data-quality.json`` — manifesto de auditoria consumido por
+``scripts/update_operacao_doc.py`` e pelo workflow ``data-refresh.yml``.
 
-Estrutura (Seção 4 da spec ``2026-05-14-radar-fidc-polimento-design.md``)::
+Estrutura::
 
     {
       "generated_at": ISO-UTC,
