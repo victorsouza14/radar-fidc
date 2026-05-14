@@ -26,19 +26,10 @@ env/
 dist/
 build/
 
-# Dados locais bronze/silver/gold gerados pelo pipeline Azure (fora do repo)
+# Dados locais (não devem entrar no repo — geração on-demand via ADLS)
 data/
-
-# Por padrão CSVs e Parquets ficam fora — exceto os datasets fixos do projeto
-*.csv
-*.parquet
-!data_real/**/*.csv
-!data_real/*.csv
-!data_real/**/*.parquet
-
-# Datasets binários do projeto (versionados — fontes do dashboard)
-!data_real/*.xlsx
-!data_real/*.pkl
+data_real/
+.cache/
 
 # macOS
 .DS_Store
