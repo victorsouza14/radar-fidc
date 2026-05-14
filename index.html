@@ -498,9 +498,15 @@
               <option value="">Risco: todos</option>
               <option value="BAIXO">Baixo</option><option value="MEDIO">Médio</option><option value="ALTO">Alto</option>
             </select>
+            <select id="f-credit-setor" class="select" style="min-width:200px">
+              <option value="">Setor: todos</option>
+            </select>
+            <select id="f-credit-uf" class="select">
+              <option value="">UF: todos</option>
+            </select>
             <div class="input-icon">
               <svg><use href="#icon-search"/></svg>
-              <input type="text" id="f-credit-busca" class="input" placeholder="Buscar por nome da empresa">
+              <input type="text" id="f-credit-busca" class="input" placeholder="Buscar por nome, setor ou UF">
             </div>
             <div class="filter-group">
               <label for="f-credit-score-min">Score:</label>
@@ -526,7 +532,8 @@
           <div class="table-wrap">
             <table>
               <thead><tr>
-                <th>Empresa</th><th class="num">Score</th><th class="num">Prob. default</th><th>Risco</th>
+                <th>Empresa</th><th>Setor</th><th>UF</th>
+                <th class="num">Score</th><th class="num">Prob. default</th><th>Risco</th>
                 <th class="num">Total boletos</th><th class="num">Defaults</th><th class="num">% default</th>
               </tr></thead>
               <tbody id="tbody-credit"></tbody>

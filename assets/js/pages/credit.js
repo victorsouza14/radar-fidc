@@ -15,6 +15,8 @@ const RISCO_ORDER = ["BAIXO", "MEDIO", "ALTO"];
 const state = {
   busca: "",
   risco: "",
+  setor: "",
+  uf: "",
   scoreMin: null,
   scoreMax: null,
   probMin: null,
@@ -40,8 +42,13 @@ const applyFilters = memoize((s) => {
   const out = [];
   for (let i = 0; i < all.length; i++) {
     const e = all[i];
-    if (buscaLc && !(e.nome ?? "").toLowerCase().includes(buscaLc)) continue;
+    if (buscaLc) {
+      const hay = `${e.nome ?? ""} ${e.setor ?? ""} ${e.uf ?? ""}`.toLowerCase();
+      if (!hay.includes(buscaLc)) continue;
+    }
     if (s.risco && e.risco !== s.risco) continue;
+    if (s.setor && e.setor !== s.setor) continue;
+    if (s.uf    && e.uf    !== s.uf)    continue;
 
     // Score/prob default só são comparáveis para empresas com dados suficientes.
     // Quando o usuário aplica esses filtros, empresas insuficientes ficam de fora.
@@ -59,7 +66,7 @@ const applyFilters = memoize((s) => {
   }
   return out;
 }, s => [
-  s.busca, s.risco,
+  s.busca, s.risco, s.setor, s.uf,
   s.scoreMin, s.scoreMax,
   s.probMin, s.probMax,
   s.boletosMin, s.boletosMax,
@@ -77,6 +84,8 @@ const rowTpl = (e) => {
   return `
     <tr>
       <td>${escapeHTML(e.nome)}</td>
+      <td style="font-size:0.84rem;color:var(--fg-muted)">${escapeHTML(e.setor ?? "—")}</td>
+      <td style="font-family:var(--font-mono);font-size:0.78rem">${escapeHTML(e.uf ?? "—")}</td>
       <td>${scoreCell}</td>
       <td>${probCell}</td>
       <td><span class="badge ${riscoBadge(e.risco)}">${escapeHTML(e.risco)}</span></td>
@@ -90,7 +99,7 @@ const table = createPaginatedTable({
   prefix: "credit",
   tbodyId: "tbody-credit",
   rowTpl,
-  colspan: 7,
+  colspan: 9,
   empty: "Nenhuma empresa encontrada",
   noun: "empresas",
   keyField: "nome",
@@ -141,9 +150,32 @@ const numOrNull = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
+function populateSetorAndUfSelects() {
+  const all = Store.credit.empresas();
+  const setores = new Set();
+  const ufs = new Set();
+  for (const e of all) {
+    if (e.setor && e.setor !== "Não classificado") setores.add(e.setor);
+    if (e.uf && e.uf !== "—") ufs.add(e.uf);
+  }
+
+  const selSetor = byId("f-credit-setor");
+  if (selSetor) {
+    const opts = [...setores].sort().map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join("");
+    selSetor.innerHTML = `<option value="">Setor: todos</option>${opts}`;
+  }
+  const selUf = byId("f-credit-uf");
+  if (selUf) {
+    const opts = [...ufs].sort().map(u => `<option value="${escapeHTML(u)}">${escapeHTML(u)}</option>`).join("");
+    selUf.innerHTML = `<option value="">UF: todos</option>${opts}`;
+  }
+}
+
 function bindFilters() {
   onInput("f-credit-busca",        v => { state.busca      = v;              onStateChange(); });
   onChange("f-credit-risco",       v => { state.risco      = v;              onStateChange(); });
+  onChange("f-credit-setor",       v => { state.setor      = v;              onStateChange(); });
+  onChange("f-credit-uf",          v => { state.uf         = v;              onStateChange(); });
   onInput("f-credit-score-min",    v => { state.scoreMin   = numOrNull(v);   onStateChange(); });
   onInput("f-credit-score-max",    v => { state.scoreMax   = numOrNull(v);   onStateChange(); });
   onInput("f-credit-prob-min",     v => { state.probMin    = numOrNull(v);   onStateChange(); });
@@ -152,13 +184,14 @@ function bindFilters() {
   onInput("f-credit-boletos-max",  v => { state.boletosMax = numOrNull(v);   onStateChange(); });
 
   onClick("f-credit-clear", () => {
-    state.busca = ""; state.risco = "";
+    state.busca = ""; state.risco = ""; state.setor = ""; state.uf = "";
     state.scoreMin = state.scoreMax = null;
     state.probMin = state.probMax = null;
     state.boletosMin = state.boletosMax = null;
-    // Reset busca + risco (texto/select); demais inputs limpos via byId.value.
     resetField("f-credit-busca");
     resetField("f-credit-risco");
+    resetField("f-credit-setor");
+    resetField("f-credit-uf");
     ["f-credit-score-min", "f-credit-score-max",
      "f-credit-prob-min",  "f-credit-prob-max",
      "f-credit-boletos-min", "f-credit-boletos-max"].forEach(id => {
@@ -171,6 +204,7 @@ function bindFilters() {
 
 export function init() {
   renderKPIs();
+  populateSetorAndUfSelects();
   table.render(applyFilters(state));
   bindFilters();
 }
