@@ -26,6 +26,11 @@ from pathlib import Path
 # Permite rodar tanto como `python scripts/...` quanto via import.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# Carrega .env automaticamente (no-op se não existir — no CI as vars vêm dos secrets).
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 from lib import io_utils, payload  # noqa: E402
 from lib.logger import get_logger  # noqa: E402
 
