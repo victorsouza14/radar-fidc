@@ -4,7 +4,7 @@ import { setText, onInput, onChange } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
 import { riscoColor, riscoBadge } from "../theme.js";
 import { doughnut } from "../components/chart-factory.js";
-import { renderTable } from "../components/table.js";
+import { createPaginatedTable } from "../components/paginated-table.js";
 
 const RISCO_ORDER = ["BAIXO", "MEDIO", "ALTO"];
 
@@ -25,7 +25,7 @@ const applyFilters = memoize((s) => {
 
 const rowTpl = (e) => `
   <tr>
-    <td style="font-family:monospace;font-size:0.74rem;color:var(--fg-subtle)">${escapeHTML(e.id_cnpj)}</td>
+    <td style="font-family:var(--font-mono);font-size:0.74rem;color:var(--fg-subtle)">${escapeHTML(e.id_cnpj)}</td>
     <td><strong>${fmtNum(e.score)}</strong></td>
     <td>${fmtPct((e.prob_default ?? 0) * 100, 2)}</td>
     <td><span class="badge ${riscoBadge(e.risco)}">${escapeHTML(e.risco)}</span></td>
@@ -33,6 +33,20 @@ const rowTpl = (e) => `
     <td>${fmtInt(e.n_default)}</td>
     <td>${fmtPct((e.pct_default ?? 0) * 100, 1)}</td>
   </tr>`;
+
+const table = createPaginatedTable({
+  prefix: "credit",
+  tbodyId: "tbody-credit",
+  rowTpl,
+  colspan: 7,
+  empty: "Nenhuma empresa encontrada",
+  noun: "empresas",
+  keyField: "id_cnpj",
+  onUpdate: (page) => {
+    const label = page.total === 1 ? "empresa na amostra" : "empresas na amostra";
+    setText("credit-count", `${page.total.toLocaleString("pt-BR")} ${label}`);
+  },
+});
 
 function renderKPIs() {
   const s = Store.credit.stats();
@@ -62,21 +76,19 @@ function renderDonut() {
   );
 }
 
-function renderTabela() {
-  const filtered = applyFilters(state);
-  setText("credit-count", `${filtered.length} empresas na amostra`);
-  renderTable("tbody-credit", filtered, rowTpl,
-    { colspan: 7, empty: "Nenhuma empresa encontrada" });
+function onStateChange() {
+  table.reset();
+  table.render(applyFilters(state));
 }
 
 function bindFilters() {
-  onInput("f-credit-busca",  v => { state.busca = v; renderTabela(); });
-  onChange("f-credit-risco", v => { state.risco = v; renderTabela(); });
+  onInput("f-credit-busca",  v => { state.busca = v; onStateChange(); });
+  onChange("f-credit-risco", v => { state.risco = v; onStateChange(); });
 }
 
 export function init() {
   renderKPIs();
-  renderTabela();
+  table.render(applyFilters(state));
   bindFilters();
 }
 

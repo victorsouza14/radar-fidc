@@ -1,9 +1,9 @@
 import { Store } from "../store.js";
 import { fmtNum, fmtPct, escapeHTML } from "../utils/format.js";
-import { setText, setHTML, onChange, onClick, resetField } from "../utils/dom.js";
+import { setText, setHTML, byId, onChange, onClick, resetField } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
 import { perfilColor, riscoBadge, rankBadgeClass } from "../theme.js";
-import { renderTable } from "../components/table.js";
+import { createPaginatedTable } from "../components/paginated-table.js";
 
 const TOP_N = 5;
 
@@ -58,11 +58,10 @@ function matchCardTpl(m) {
 }
 
 function renderCards() {
-  const wrap = document.getElementById("match-cards");
+  const wrap = byId("match-cards");
   if (!wrap) return;
 
   if (!state.cpf) { wrap.innerHTML = ""; return; }
-
   const cliente = Store.clientes.findByCpf(state.cpf);
   if (!cliente) { wrap.innerHTML = ""; return; }
 
@@ -79,31 +78,42 @@ function renderCards() {
 const tableRowTpl = (m) => `
   <tr>
     <td><span class="rank-badge ${rankBadgeClass(m.rank)}">${m.rank}</span></td>
-    <td style="font-weight:500">${escapeHTML(m.cliente)}</td>
+    <td class="cell-truncate" title="${escapeHTML(m.cliente)}">${escapeHTML(m.cliente)}</td>
     <td><span style="color:${perfilColor(m.perfil_cliente)};font-weight:600;font-size:0.78rem">${escapeHTML(m.perfil_cliente)}</span></td>
-    <td style="font-size:0.82rem">${escapeHTML(m.fundo)}</td>
+    <td class="cell-truncate" title="${escapeHTML(m.fundo)}">${escapeHTML(m.fundo)}</td>
     <td>${escapeHTML(m.tipo_cota)}</td>
     <td><span class="badge ${riscoBadge(m.risco_fundo)}">${escapeHTML(m.risco_fundo)}</span></td>
     <td>${fmtPct(m.retorno_anual, 2)}</td>
     <td><strong>${fmtNum(m.match_score)}</strong></td>
-    <td style="font-size:0.78rem;color:var(--fg-subtle)">${escapeHTML(m.motivo)}</td>
+    <td class="cell-truncate" title="${escapeHTML(m.motivo)}">${escapeHTML(m.motivo)}</td>
   </tr>`;
 
-function renderTabela() {
-  const list = applyFilters(state);
+function titleFor(total) {
+  const n = total.toLocaleString("pt-BR");
+  if (state.cpf)    return `Recomendações do cliente (${n})`;
+  if (state.perfil) return `Recomendações do perfil ${state.perfil} (${n})`;
+  return `Todas as recomendações (${n})`;
+}
 
-  const title =
-    state.cpf    ? `Matches do cliente (${list.length})` :
-    state.perfil ? `Matches do perfil ${state.perfil} (${list.length})` :
-                   `Todos os matches (${list.length})`;
-  setText("match-table-title", title);
+const table = createPaginatedTable({
+  prefix: "match",
+  tbodyId: "tbody-match",
+  rowTpl: tableRowTpl,
+  colspan: 9,
+  empty: "Nenhuma recomendação encontrada",
+  noun: "recomendações",
+  keyFn: m => `${m.cpf}|${m.fundo}`,
+  onUpdate: (page) => setText("match-table-title", titleFor(page.total)),
+});
 
-  renderTable("tbody-match", list, tableRowTpl,
-    { colspan: 9, empty: "Nenhum match encontrado" });
+function onStateChange() {
+  table.reset();
+  renderCards();
+  table.render(applyFilters(state));
 }
 
 function populateClienteSelect() {
-  const sel = document.getElementById("f-match-cliente");
+  const sel = byId("f-match-cliente");
   if (!sel) return;
   const options = Store.clientes.lista()
     .slice()
@@ -114,18 +124,17 @@ function populateClienteSelect() {
 }
 
 function bindFilters() {
-  onChange("f-match-cliente", v => { state.cpf = v; renderCards(); renderTabela(); });
-  onChange("f-match-perfil",  v => { state.perfil = v; renderTabela(); });
+  onChange("f-match-cliente", v => { state.cpf = v; onStateChange(); });
+  onChange("f-match-perfil",  v => { state.perfil = v; onStateChange(); });
   onClick("f-match-clear", () => {
     state.cpf = state.perfil = "";
     ["f-match-cliente", "f-match-perfil"].forEach(id => resetField(id));
-    renderCards();
-    renderTabela();
+    onStateChange();
   });
 }
 
 export function init() {
   populateClienteSelect();
-  renderTabela();
+  table.render(applyFilters(state));
   bindFilters();
 }

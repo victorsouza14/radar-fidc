@@ -306,11 +306,33 @@
 
         <div class="grid-2" style="margin-bottom:20px">
           <div class="card">
-            <div class="card-title"><svg><use href="#icon-scatter"/></svg> Retorno × Score de risco</div>
-            <div class="chart-container tall"><canvas id="chart-scatter"></canvas></div>
+            <div class="card-title"><svg><use href="#icon-activity"/></svg> Estatísticas da seleção</div>
+            <div class="card-subtitle">Médias agregadas sobre os fundos filtrados.</div>
+            <div class="stats-grid">
+              <div class="stat-block">
+                <div class="stat-label">Retorno médio</div>
+                <div class="stat-value tnum" id="fidcs-stat-retorno">—</div>
+                <div class="stat-unit">% ao ano</div>
+              </div>
+              <div class="stat-block">
+                <div class="stat-label">Volatilidade média</div>
+                <div class="stat-value tnum" id="fidcs-stat-vol">—</div>
+                <div class="stat-unit">% ao ano</div>
+              </div>
+              <div class="stat-block">
+                <div class="stat-label">Inadimplência média</div>
+                <div class="stat-value tnum" id="fidcs-stat-inad">—</div>
+                <div class="stat-unit">% da carteira</div>
+              </div>
+              <div class="stat-block">
+                <div class="stat-label">Score risco médio</div>
+                <div class="stat-value tnum" id="fidcs-stat-score">—</div>
+                <div class="stat-unit">0 a 100</div>
+              </div>
+            </div>
           </div>
           <div class="card">
-            <div class="card-title"><svg><use href="#icon-bar"/></svg> Distribuição por tipo de cota</div>
+            <div class="card-title"><svg><use href="#icon-pie"/></svg> Distribuição por tipo de cota</div>
             <div class="chart-container tall"><canvas id="chart-cota"></canvas></div>
           </div>
         </div>
@@ -325,6 +347,18 @@
               </tr></thead>
               <tbody id="tbody-fidcs"></tbody>
             </table>
+          </div>
+          <div class="pagination" id="fidcs-pagination" hidden>
+            <div class="pagination-info" id="fidcs-pagination-info">—</div>
+            <div class="pagination-controls">
+              <button class="btn" id="fidcs-pagination-prev" aria-label="Página anterior">
+                <svg><use href="#icon-chevron-left"/></svg> Anterior
+              </button>
+              <span class="pagination-page" id="fidcs-pagination-page">—</span>
+              <button class="btn" id="fidcs-pagination-next" aria-label="Próxima página">
+                Próximo <svg><use href="#icon-chevron-right"/></svg>
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -475,6 +509,18 @@
               <tbody id="tbody-match"></tbody>
             </table>
           </div>
+          <div class="pagination" id="match-pagination" hidden>
+            <div class="pagination-info" id="match-pagination-info">—</div>
+            <div class="pagination-controls">
+              <button class="btn" id="match-pagination-prev" aria-label="Página anterior">
+                <svg><use href="#icon-chevron-left"/></svg> Anterior
+              </button>
+              <span class="pagination-page" id="match-pagination-page">—</span>
+              <button class="btn" id="match-pagination-next" aria-label="Próxima página">
+                Próximo <svg><use href="#icon-chevron-right"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -549,6 +595,18 @@
               </tr></thead>
               <tbody id="tbody-credit"></tbody>
             </table>
+          </div>
+          <div class="pagination" id="credit-pagination" hidden>
+            <div class="pagination-info" id="credit-pagination-info">—</div>
+            <div class="pagination-controls">
+              <button class="btn" id="credit-pagination-prev" aria-label="Página anterior">
+                <svg><use href="#icon-chevron-left"/></svg> Anterior
+              </button>
+              <span class="pagination-page" id="credit-pagination-page">—</span>
+              <button class="btn" id="credit-pagination-next" aria-label="Próxima página">
+                Próximo <svg><use href="#icon-chevron-right"/></svg>
+              </button>
+            </div>
           </div>
         </div>
       </section>
