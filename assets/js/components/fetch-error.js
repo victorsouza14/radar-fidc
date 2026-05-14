@@ -12,7 +12,7 @@
  */
 
 export const STORAGE_KEY = "radar-fidc:last-known-data";
-export const STORAGE_KEY_TIMESTAMP = "radar-fidc:last-known-data:ts";
+const STORAGE_KEY_TIMESTAMP = "radar-fidc:last-known-data:ts";
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({
@@ -55,18 +55,6 @@ export function getCachedData() {
     return { data, timestamp };
   } catch (_err) {
     return null;
-  }
-}
-
-/**
- * Limpa o cache (útil para testes manuais).
- */
-export function clearCachedData() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STORAGE_KEY_TIMESTAMP);
-  } catch (_err) {
-    /* nada a fazer. */
   }
 }
 

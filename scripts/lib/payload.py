@@ -36,10 +36,6 @@ MIN_MESES_HISTORICO = 6
 # Limite máximo de retorno anual a ser plotado (acima disso é provavelmente artefato).
 RETORNO_OUTLIER_PCT = 200.0
 
-# Faixa válida para retorno mensal usado no cálculo de retorno anual.
-# Usado para WINSORIZAR (clip) — não descartar — retornos extremos.
-RETORNO_MENSAL_CLIP = 0.5
-
 
 # ─── MACRO ───────────────────────────────────────────────────────────
 # A regra de cenário vive em scripts/lib/scenario.py (fonte única).

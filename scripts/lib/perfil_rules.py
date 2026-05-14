@@ -6,11 +6,6 @@ e rating.py (perfil sugerido por tipo de cota x risco).
 
 from __future__ import annotations
 
-PERFIS = ("CONSERVADOR", "MODERADO", "ARROJADO")
-TIPOS_COTA = ("UNICA", "SENIOR", "MEZANINO", "JUNIOR")
-CATEGORIAS_RISCO = ("BAIXO", "MEDIO", "ALTO")
-
-
 # Perfil sugerido = TIPO_COTA x CATEGORIA_RISCO → PERFIL.
 # Aplicado em rating.py após o KMeans definir CATEGORIA_RISCO.
 PERFIL_SUGERIDO = {

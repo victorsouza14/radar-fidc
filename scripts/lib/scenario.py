@@ -51,9 +51,10 @@ def classify_selic(selic: float | None) -> CenarioMacro:
     )
 
 
-# Para uso em scoring por indexador inferido (rating.py / payload.py).
+# Scoring matrix por cenario macro x indexador inferido do fundo.
+# Atualmente usado apenas por testes — preservado como scaffold para futuros
+# rankers que ponderem fundos por adequação macro.
 SCORE_MACRO_POR_CENARIO = {
-    # cenario_chave -> {indexador_inferido: score 0-100}
     "favoravel_posfixado": {"posfixado": 85.0, "prefixado": 45.0, "indefinido": 65.0},
     "neutro": {"posfixado": 60.0, "prefixado": 55.0, "indefinido": 57.5},
     "favoravel_prefixado": {"posfixado": 45.0, "prefixado": 80.0, "indefinido": 62.5},
@@ -62,5 +63,5 @@ SCORE_MACRO_POR_CENARIO = {
 
 
 def score_macro(cenario_chave: str, indexador: str) -> float:
-    """Retorna o score macro (0-100) para um indexador num cenário."""
+    """Score 0-100 para um (cenário macro, indexador). Default 50.0 quando desconhecido."""
     return SCORE_MACRO_POR_CENARIO.get(cenario_chave, SCORE_MACRO_POR_CENARIO["indisponivel"]).get(indexador, 50.0)

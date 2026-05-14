@@ -25,7 +25,7 @@ function ensureCanvas(id) {
   return el;
 }
 
-export function render(id, config) {
+function render(id, config) {
   applyGlobalDefaults();
   destroy(id);
   const chart = new Chart(ensureCanvas(id), config);
