@@ -18,7 +18,7 @@ ralph.log
 __pycache__/
 *.py[cod]
 *.pyo
-.venv/
+.venv*/
 venv/
 env/
 *.egg-info/
