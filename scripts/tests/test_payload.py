@@ -572,8 +572,11 @@ class TestBuildCredit:
         """Concat de head+tail+sample pode produzir duplicatas; payload precisa deduplicar."""
         df = pd.DataFrame([_credit_row(id_cnpj=f"emp{i:05d}", score_credito=float(i)) for i in range(20)])
         out = build_credit(df)
-        ids = [e["id_cnpj"] for e in out["empresas"]]
-        assert len(ids) == len(set(ids)), "Empresas duplicadas no output do build_credit"
+        # `nome` substitui `id_cnpj` no payload (LGPD: hash anônimo viralizado
+        # como label legível). A unicidade segue garantida pelos primeiros 8
+        # caracteres do hash, que são determinísticos.
+        nomes = [e["nome"] for e in out["empresas"]]
+        assert len(nomes) == len(set(nomes)), "Empresas duplicadas no output do build_credit"
 
     def test_empresas_limitadas_por_max_credit(self) -> None:
         df = pd.DataFrame([_credit_row(id_cnpj=f"emp{i:05d}", score_credito=float(i)) for i in range(MAX_CREDIT * 2)])
@@ -581,10 +584,15 @@ class TestBuildCredit:
         assert len(out["empresas"]) <= MAX_CREDIT
 
     def test_media_prob_default_calculada_quando_coluna_existe(self) -> None:
+        # A média de prob_default agora é restrita a empresas com
+        # `total_boletos >= MIN_BOLETOS_SCORE_CONFIAVEL` (== 20). Empresas
+        # abaixo do limiar têm prob ruidosa e enviesariam a média —
+        # decisão deliberada do schema novo de credit. As fixtures usam
+        # 25 boletos pra ficarem no universo "confiável".
         df = pd.DataFrame(
             [
-                _credit_row(id_cnpj="emp1", prob_default=0.10),
-                _credit_row(id_cnpj="emp2", prob_default=0.30),
+                _credit_row(id_cnpj="emp1", prob_default=0.10, total_boletos=25),
+                _credit_row(id_cnpj="emp2", prob_default=0.30, total_boletos=25),
             ]
         )
         out = build_credit(df)

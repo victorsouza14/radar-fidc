@@ -321,27 +321,50 @@ def build_matches(todos: pd.DataFrame, ranking: pd.DataFrame) -> dict[str, Any]:
 
 
 # ─── CREDIT ──────────────────────────────────────────────────────────
-def _anon_id(raw: Any) -> str:
-    """Anonimiza o hash do CNPJ: 'EMP-XXXXXXXX' usando os primeiros 8 chars do hash."""
+# Mínimo de boletos para que o score seja considerado confiável. Empresas
+# abaixo desse threshold são marcadas `dados_suficientes=False` e o
+# frontend renderiza "Dados insuficientes" no lugar dos valores numéricos.
+MIN_BOLETOS_SCORE_CONFIAVEL = 20
+
+
+def _nome_empresa(raw: Any) -> str:
+    """Deriva um nome anônimo legível a partir do hash do CNPJ.
+
+    O ``id_cnpj`` no Gold já é SHA-256 anonimizado (LGPD). Usamos os
+    primeiros 8 caracteres em CAIXA ALTA para obter um identificador
+    determinístico e fácil de comunicar (ex.: ``Empresa A3B5C2D9``).
+    """
     s = to_str(raw)
-    return f"EMP-{s[:8].upper()}" if s else "EMP-—"
+    return f"Empresa {s[:8].upper()}" if s else "Empresa —"
 
 
 def _credit_row(r: pd.Series) -> dict[str, Any]:
+    total_boletos = to_int(r.get("total_boletos"))
+    dados_suficientes = total_boletos >= MIN_BOLETOS_SCORE_CONFIAVEL
     return {
-        "id_cnpj": _anon_id(r.get("id_cnpj")),
+        "nome": _nome_empresa(r.get("id_cnpj")),
         "score": to_float(r.get("score_credito"), 0.0, 1),
         "prob_default": to_float(r.get("prob_default"), 0.0, 4),
         "risco": to_str(r.get("risco_credito"), "SEM DADOS"),
-        "total_boletos": to_int(r.get("total_boletos")),
+        "total_boletos": total_boletos,
         "n_default": to_int(r.get("n_default")),
         "pct_default": to_float(r.get("pct_default"), 0.0, 2),
+        "dados_suficientes": dados_suficientes,
     }
 
 
 def build_credit(df: pd.DataFrame) -> dict[str, Any]:
     if df.empty:
-        return {"empresas": [], "stats": {"total": 0, "por_risco": {}, "media_score": 0.0}}
+        return {
+            "empresas": [],
+            "stats": {
+                "total": 0,
+                "total_confiaveis": 0,
+                "por_risco": {},
+                "media_score": 0.0,
+                "min_boletos_score_confiavel": MIN_BOLETOS_SCORE_CONFIAVEL,
+            },
+        }
 
     sample_size_each = MAX_CREDIT // 3
     df_sorted = df.sort_values("score_credito", ascending=False)
@@ -357,13 +380,28 @@ def build_credit(df: pd.DataFrame) -> dict[str, Any]:
         .head(MAX_CREDIT)
     )
 
+    confiaveis_mask = df["total_boletos"] >= MIN_BOLETOS_SCORE_CONFIAVEL
+    df_confiaveis = df[confiaveis_mask]
+
+    # Estatísticas agregadas usam apenas empresas com dados suficientes —
+    # caso contrário a média é dominada por scores ruidosos de empresas com
+    # 1-2 boletos. Por_risco mantém o universo total para auditoria.
+    stats_media_score = to_float(df_confiaveis["score_credito"].mean(), 0.0, 1) if len(df_confiaveis) else 0.0
+    stats_media_prob = (
+        to_float(df_confiaveis["prob_default"].mean(), 0.0, 4)
+        if len(df_confiaveis) and "prob_default" in df_confiaveis
+        else 0.0
+    )
+
     return {
         "empresas": [_credit_row(r) for _, r in sample.iterrows()],
         "stats": {
             "total": len(df),
+            "total_confiaveis": int(confiaveis_mask.sum()),
             "por_risco": df["risco_credito"].fillna("SEM DADOS").value_counts().to_dict(),
-            "media_score": to_float(df["score_credito"].mean(), 0.0, 1),
-            "media_prob_default": to_float(df["prob_default"].mean(), 0.0, 4) if "prob_default" in df else 0.0,
+            "media_score": stats_media_score,
+            "media_prob_default": stats_media_prob,
             "taxa_default_observada": to_float(df["defaultou"].mean(), 0.0, 4) if "defaultou" in df else 0.0,
+            "min_boletos_score_confiavel": MIN_BOLETOS_SCORE_CONFIAVEL,
         },
     }
