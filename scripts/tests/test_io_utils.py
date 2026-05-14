@@ -160,7 +160,7 @@ class TestReadMacro:
 
 # ─── read_rating ─────────────────────────────────────────────────────────
 class TestReadRating:
-    def test_le_ambas_as_abas(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_le_apenas_aba_geral(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from lib import azure_io, io_utils
 
         geral_df = pd.DataFrame(
@@ -182,19 +182,7 @@ class TestReadRating:
                 "MESES_HISTORICO": [12],
             }
         )
-        resumo_df = pd.DataFrame(
-            {
-                "CNPJ": ["12345678000190"],
-                "FUNDO": ["FIDC A"],
-                "SCORE_RISCO": [42.5],
-                "RISCO": ["BAIXO"],
-                "RETORNO_MEDIO": [12.3],
-                "MELHOR_COTA": ["UNICA"],
-                "PERFIL_PREDOMINANTE": ["CONSERVADOR"],
-            }
-        )
-        sheets = {"GERAL": geral_df, "RESUMO_POR_FUNDO": resumo_df}
-
+        sheets = {"GERAL": geral_df}
         called: dict[str, Any] = {}
 
         def fake_read_excel_sheets(path: str, sheet_names: list[str]) -> dict[str, pd.DataFrame]:
@@ -204,24 +192,19 @@ class TestReadRating:
 
         monkeypatch.setattr(azure_io, "read_excel_sheets", fake_read_excel_sheets)
 
-        geral, resumo = io_utils.read_rating()
-        assert "GERAL" in called["sheets"]
-        assert "RESUMO_POR_FUNDO" in called["sheets"]
+        geral = io_utils.read_rating()
+        assert called["sheets"] == ["GERAL"]
         assert len(geral) == 1
-        assert len(resumo) == 1
 
-    def test_404_devolve_par_vazio(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Arquivo de rating ausente → ambos os DataFrames retornam vazios."""
+    def test_404_devolve_dataframe_vazio(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Arquivo de rating ausente → DataFrame vazio."""
         from lib import azure_io, io_utils
 
         def boom(*_a: Any, **_kw: Any) -> dict[str, pd.DataFrame]:
             raise ResourceNotFoundError("404")
 
         monkeypatch.setattr(azure_io, "read_excel_sheets", boom)
-
-        geral, resumo = io_utils.read_rating()
-        assert geral.empty
-        assert resumo.empty
+        assert io_utils.read_rating().empty
 
 
 # ─── read_focus_indicators ───────────────────────────────────────────────
@@ -328,8 +311,7 @@ def test_io_utils_nao_bate_no_adls_quando_mocked(monkeypatch: pytest.MonkeyPatch
     assert io_utils.read_clientes().empty
     assert io_utils.read_credit_scores().empty
     assert io_utils.read_macro().empty
-    geral, resumo = io_utils.read_rating()
-    assert geral.empty and resumo.empty
+    assert io_utils.read_rating().empty
 
 
 # ─── read_credit_scores: coerção numérica ────────────────────────────────

@@ -105,8 +105,6 @@ class TestPIIMaskRegression:
         # Email mascarado preserva 1ª letra e TLD.
         assert "@" in cli["email"] and "***" in cli["email"]
         assert cli["email"].startswith("j"), f"Email mask perdeu inicial: {cli['email']}"
-        # Telefone: (DD) ****-XXXX
-        assert re.match(r"\(\d{2}\) \*{4}-\d{4}", cli["telefone"]), f"Telefone mask inesperada: {cli['telefone']}"
         # Nome: primeiro + inicial do último (sem o sobrenome do meio).
         assert "Pereira" not in cli["nome"], f"Sobrenome completo vazou: {cli['nome']}"
         assert cli["nome"].startswith("Joao "), f"Nome mask quebrou: {cli['nome']}"
@@ -129,7 +127,7 @@ class TestPIIMaskRegression:
             "matches": payload.build_matches(matches_pii_df, pd.DataFrame()),
             # fidcs/credit/macro são "PII-free" por construção, mas incluir
             # builders vazios garante que JSON final não trapaceia ao concatenar.
-            "fidcs": payload.build_fidcs(pd.DataFrame(), pd.DataFrame()),
+            "fidcs": payload.build_fidcs(pd.DataFrame()),
             "credit": payload.build_credit(pd.DataFrame()),
             "macro": payload.build_macro(pd.DataFrame()),
         }

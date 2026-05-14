@@ -62,7 +62,7 @@ def build_all() -> tuple[dict, dict]:
     log.info("pipeline_start", source="adls", filesystem="gold", prefix="final")
 
     log.info("reading", source="rating_fidc.xlsx")
-    geral, resumo = io_utils.read_rating()
+    geral = io_utils.read_rating()
     if geral.empty:
         raise SystemExit("ERRO: gold/final/rating_fidc.xlsx ausente ou vazio. Pipeline Databricks deve gerar antes.")
 
@@ -85,10 +85,9 @@ def build_all() -> tuple[dict, dict]:
         "generated_at": now_iso_utc(),
         "config": {
             "min_meses_historico": payload.MIN_MESES_HISTORICO,
-            "retorno_outlier_pct": payload.RETORNO_OUTLIER_PCT,
         },
         "macro": payload.build_macro(df_macro, focus_indicators),
-        "fidcs": payload.build_fidcs(geral, resumo),
+        "fidcs": payload.build_fidcs(geral),
         "clientes": payload.build_clientes(df_clientes),
         "matches": payload.build_matches(todos, ranking),
         "credit": payload.build_credit(df_credit),
@@ -120,9 +119,7 @@ def emit_summary(out: Path, data: dict) -> None:
         "pipeline_end",
         output=str(out),
         size_kb=size_kb,
-        fidcs_resumo=len(data["fidcs"]["resumo"]),
         fidcs_detalhe=len(data["fidcs"]["detalhe"]),
-        scatter=len(data["fidcs"]["scatter"]),
         clientes=data["clientes"]["total"],
         matches=data["matches"]["total"],
         credit=len(data["credit"]["empresas"]),

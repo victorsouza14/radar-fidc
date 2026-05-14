@@ -44,21 +44,6 @@ def rating_geral_valid() -> pd.DataFrame:
     )
 
 
-@pytest.fixture
-def rating_resumo_valid() -> pd.DataFrame:
-    return pd.DataFrame(
-        {
-            "CNPJ": [12345678000190],
-            "FUNDO": ["FIDC ABC"],
-            "SCORE_RISCO": [42.5],
-            "RISCO": ["BAIXO"],
-            "RETORNO_MEDIO": [12.3],
-            "MELHOR_COTA": ["UNICA"],
-            "PERFIL_PREDOMINANTE": ["CONSERVADOR"],
-        }
-    )
-
-
 class TestRatingGeralSchema:
     def test_valid_df_passes(self, rating_geral_valid: pd.DataFrame) -> None:
         from lib.schemas import RatingGeralSchema
@@ -111,29 +96,6 @@ class TestRatingGeralSchema:
         df = rating_geral_valid.copy()
         df.loc[0, "TAXA_INADIMPLENCIA"] = 5000.0
         RatingGeralSchema.validate(df, lazy=True)
-
-
-class TestRatingResumoSchema:
-    def test_valid_df_passes(self, rating_resumo_valid: pd.DataFrame) -> None:
-        from lib.schemas import RatingResumoSchema
-
-        RatingResumoSchema.validate(rating_resumo_valid, lazy=True)
-
-    def test_score_negative_fails(self, rating_resumo_valid: pd.DataFrame) -> None:
-        from lib.schemas import RatingResumoSchema
-
-        bad = rating_resumo_valid.copy()
-        bad.loc[0, "SCORE_RISCO"] = -1.0
-        with pytest.raises(pa.errors.SchemaErrors):
-            RatingResumoSchema.validate(bad, lazy=True)
-
-    def test_invalid_perfil_predominante_fails(self, rating_resumo_valid: pd.DataFrame) -> None:
-        from lib.schemas import RatingResumoSchema
-
-        bad = rating_resumo_valid.copy()
-        bad.loc[0, "PERFIL_PREDOMINANTE"] = "MORTAL"
-        with pytest.raises(pa.errors.SchemaErrors):
-            RatingResumoSchema.validate(bad, lazy=True)
 
 
 # ─── Matches ─────────────────────────────────────────────────────────────

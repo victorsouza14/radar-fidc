@@ -83,25 +83,6 @@ class RatingGeralSchema(pa.DataFrameModel):
         coerce = True
 
 
-class RatingResumoSchema(pa.DataFrameModel):
-    """``gold/final/rating_fidc.xlsx`` — aba RESUMO_POR_FUNDO.
-
-    Mesmo padrão de nullable do schema GERAL para RISCO/SCORE_RISCO.
-    """
-
-    CNPJ: Series[str] = pa.Field(nullable=False)
-    FUNDO: Series[str] = pa.Field(nullable=False)
-    SCORE_RISCO: Series[float] = pa.Field(ge=0.0, le=100.0, nullable=True)
-    RISCO: Series[str] = pa.Field(isin=RISCO_VALUES, nullable=True)
-    RETORNO_MEDIO: Series[float] = pa.Field(nullable=True)
-    MELHOR_COTA: Series[str] = pa.Field(isin=TIPO_COTA_VALUES, nullable=False)
-    PERFIL_PREDOMINANTE: Series[str] = pa.Field(isin=PERFIL_VALUES, nullable=False)
-
-    class Config:
-        strict = False
-        coerce = True
-
-
 class MatchesTodosSchema(pa.DataFrameModel):
     """``gold/final/matches.xlsx`` — aba TODOS_OS_MATCHES.
 

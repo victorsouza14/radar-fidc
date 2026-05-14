@@ -33,7 +33,6 @@ from .schemas import (
     MatchesRankingSchema,
     MatchesTodosSchema,
     RatingGeralSchema,
-    RatingResumoSchema,
 )
 
 log = get_logger(__name__)
@@ -148,27 +147,22 @@ def read_macro() -> pd.DataFrame:
     return _validate(df, MacroSchema, "macroeconomicos/consolidade.csv")
 
 
-def read_rating() -> tuple[pd.DataFrame, pd.DataFrame]:
+def read_rating() -> pd.DataFrame:
+    """Lê apenas a aba GERAL — RESUMO_POR_FUNDO foi descontinuado do payload."""
     try:
-        sheets = azure_io.read_excel_sheets(PATHS["rating"], ["GERAL", "RESUMO_POR_FUNDO"])
+        sheets = azure_io.read_excel_sheets(PATHS["rating"], ["GERAL"])
     except Exception as exc:
         from azure.core.exceptions import ResourceNotFoundError
 
         if isinstance(exc, ResourceNotFoundError):
             log.warn("file_not_found", path=PATHS["rating"])
-            return pd.DataFrame(), pd.DataFrame()
+            return pd.DataFrame()
         raise
-    geral = _validate(
+    return _validate(
         sheets.get("GERAL", pd.DataFrame()),
         RatingGeralSchema,
         "rating_fidc.xlsx::GERAL",
     )
-    resumo = _validate(
-        sheets.get("RESUMO_POR_FUNDO", pd.DataFrame()),
-        RatingResumoSchema,
-        "rating_fidc.xlsx::RESUMO_POR_FUNDO",
-    )
-    return geral, resumo
 
 
 def read_focus_indicators() -> dict[str, Any] | None:
