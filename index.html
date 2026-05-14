@@ -451,10 +451,9 @@
 
         <div class="card card-compact" style="margin-bottom:20px">
           <div class="filter-row">
-            <div class="input-icon">
-              <svg><use href="#icon-search"/></svg>
-              <input type="text" id="f-cli-busca" class="input" placeholder="Buscar por nome ou CPF">
-            </div>
+            <select id="f-cli-busca" class="select" style="min-width:280px">
+              <option value="">Selecione um cliente…</option>
+            </select>
             <select id="f-cli-perfil" class="select">
               <option value="">Perfil: todos</option>
               <option value="CONSERVADOR">Conservador</option><option value="MODERADO">Moderado</option><option value="ARROJADO">Arrojado</option>

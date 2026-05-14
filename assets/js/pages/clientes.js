@@ -1,6 +1,6 @@
 import { Store } from "../store.js";
 import { fmtInt, fmtNum, fmtDate, escapeHTML } from "../utils/format.js";
-import { setText, onInput, onChange } from "../utils/dom.js";
+import { setText, byId, onChange } from "../utils/dom.js";
 import { memoize } from "../utils/memo.js";
 import { perfilColor } from "../theme.js";
 import { renderTable } from "../components/table.js";
@@ -9,16 +9,17 @@ import { renderEmptyState } from "../components/empty-state.js";
 const EXPERIENCIA = ["Iniciante", "Intermediária", "Avançada"];
 const HORIZONTE   = ["< 1 ano", "1–3 anos", "> 3 anos"];
 
-const state = { busca: "", perfil: "" };
+// `cpf` filtra para um cliente específico (selecionado no dropdown);
+// `perfil` filtra a lista por perfil suitability.
+const state = { cpf: "", perfil: "" };
 
 const applyFilters = memoize((s) => {
-  const buscaLc = s.busca.toLowerCase();
   return Store.clientes.lista().filter(c => {
-    if (buscaLc && !c.nome.toLowerCase().includes(buscaLc) && !c.cpf.includes(buscaLc)) return false;
+    if (s.cpf && c.cpf !== s.cpf) return false;
     if (s.perfil && c.perfil !== s.perfil) return false;
     return true;
   });
-}, s => `${s.busca}|${s.perfil}`);
+}, s => `${s.cpf}|${s.perfil}`);
 
 const rowTpl = (c) => `
   <tr>
@@ -51,8 +52,19 @@ function renderTabela() {
     { colspan: 8, empty: "Sem clientes encontrados" });
 }
 
+function populateClienteSelect() {
+  const sel = byId("f-cli-busca");
+  if (!sel) return;
+  const options = Store.clientes.lista()
+    .slice()
+    .sort((a, b) => a.nome.localeCompare(b.nome))
+    .map(c => `<option value="${escapeHTML(c.cpf)}">${escapeHTML(c.nome)} (${escapeHTML(c.perfil)})</option>`)
+    .join("");
+  sel.innerHTML = `<option value="">Selecione um cliente…</option>${options}`;
+}
+
 function bindFilters() {
-  onInput("f-cli-busca",   v => { state.busca  = v; renderTabela(); });
+  onChange("f-cli-busca",  v => { state.cpf    = v; renderTabela(); });
   onChange("f-cli-perfil", v => { state.perfil = v; renderTabela(); });
 }
 
@@ -78,6 +90,7 @@ export function init() {
     return;
   }
 
+  populateClienteSelect();
   renderTabela();
   bindFilters();
 }
