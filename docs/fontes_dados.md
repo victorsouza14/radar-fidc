@@ -50,7 +50,7 @@ serie_historica_fidc:
 
 | Dado | Descrição |
 |------|-----------|
-| `ExpectativaMercadoAnuais` | Projeções SELIC e IPCA para os próximos 12 meses |
+| `ExpectativasMercadoTop5Anuais` | Projeções SELIC e IPCA (mediana das top 5 instituições) para os próximos 12 meses |
 
 ---
 
@@ -93,13 +93,27 @@ ADLS Gen2 — dfdatalakesprint
 │       └── carteira_mensal.parquet
 │
 └── gold/
-    ├── score_fidc/score_fidc.parquet
-    ├── indicadores_macro/indicadores.parquet
-    ├── recomendacao_pme/recomendacao.parquet
-    ├── dashboard_resumo/
-    │   ├── dashboard_master.parquet
-    │   └── ranking_fidcs.parquet
-    └── powerbi/
+    ├── final/                                  # outputs analíticos canônicos
+    │   ├── rating_fidc.xlsx                    # abas GERAL, RESUMO_POR_FUNDO
+    │   ├── matches.xlsx                        # abas TODOS_OS_MATCHES, RANKING_FUNDOS, etc.
+    │   ├── clientes.csv                        # base de clientes (PII em claro, mascarada no payload)
+    │   ├── scores_credito.csv                  # output do credit model
+    │   ├── _quality/
+    │   │   └── expectations-result.json        # resultado Great Expectations (Fase 3)
+    │   ├── macroeconomicos/
+    │   │   └── consolidade.csv                 # série histórica BCB (SELIC, IPCA, CDI, inad PJ)
+    │   ├── anbima/                             # snapshots ANBIMA tratados
+    │   │   ├── *.csv
+    │   │   └── *.parquet
+    │   ├── cda/
+    │   │   └── cda_fi_AAAAMM.{csv,parquet}     # composição de carteira mensal
+    │   └── info_mensal/
+    │       └── inf_mensal_fidc_tab_*.{csv,parquet}
+    │
+    ├── indicadores_macro/
+    │   └── indicadores.parquet                 # consolidado Focus (selic_proj, ipca_proj)
+    │
+    └── powerbi/                                # legacy — consumo Power BI Desktop
         ├── score_fidc.csv
         ├── ranking_fidcs.csv
         ├── indicadores_macro.csv
@@ -107,11 +121,25 @@ ADLS Gen2 — dfdatalakesprint
         └── dashboard_master.csv
 ```
 
+### Mapeamento arquivo → consumidor
+
+| Arquivo | Consumido por | Como entra no `data.json` |
+|---------|---------------|---------------------------|
+| `gold/final/rating_fidc.xlsx` | `scripts/generate_dashboard_data.py` via `io_utils.read_rating` | `payload.build_fidcs` |
+| `gold/final/matches.xlsx` | `scripts/generate_dashboard_data.py` via `io_utils.read_matches` | `payload.build_matches` |
+| `gold/final/clientes.csv` | `scripts/generate_dashboard_data.py` via `io_utils.read_clientes` | `payload.build_clientes` (com mascaramento PII) |
+| `gold/final/scores_credito.csv` | `scripts/generate_dashboard_data.py` via `io_utils.read_credit_scores` | `payload.build_credit` |
+| `gold/final/macroeconomicos/consolidade.csv` | `scripts/generate_dashboard_data.py` via `io_utils.read_macro` | `payload.build_macro` (histórico) |
+| `gold/final/_quality/expectations-result.json` | workflow `data-refresh.yml` (step "Validate GE") | `data-quality.json#pipeline_quality_check` |
+| `gold/indicadores_macro/indicadores.parquet` | `scripts/generate_dashboard_data.py` via `io_utils.read_focus_indicators` | `payload.build_macro` (projeções Focus) |
+| `gold/powerbi/*.csv` | Power BI Desktop (conexão direta ADLS) | — (não entra no `data.json`) |
+| `gold/final/anbima/*`, `gold/final/cda/*`, `gold/final/info_mensal/*` | Staging dos notebooks Databricks (insumo Gold→Gold) | — (não entra no `data.json`) |
+
 ## Volume de Dados (referência março/2026)
 
 | Camada | Registros | Tamanho |
 |--------|-----------|---------|
 | Bronze ANBIMA | ~150k cotas históricas | ~45 MB |
 | Silver ANBIMA | ~150k registros | ~18 MB |
-| Gold score_fidc | 2.489 FIDCs | 208 KB |
-| Gold powerbi/ | 5 arquivos CSV | ~1.1 MB |
+| Gold `final/rating_fidc.xlsx` | 6.100 FIDCs | ~1.4 MB |
+| Gold `powerbi/` | 5 arquivos CSV | ~1.1 MB |

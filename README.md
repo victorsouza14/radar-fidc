@@ -30,6 +30,7 @@
 - [Como Executar](#-como-executar)
 - [Fontes de Dados](#-fontes-de-dados)
 - [Modelo de Score](#-modelo-de-score)
+- [Operação](#-operação)
 - [Time](#-time)
 
 ---
@@ -164,10 +165,18 @@ radar-fidc/
 │       └── orquestrador_gold.py        #   Roda 00–05 em sequência
 │
 └── docs/                               # Documentação técnica
-    ├── arquitetura.md
-    ├── modelo_score.md
-    ├── fontes_dados.md
-    └── powerbi_setup.md
+    ├── arquitetura.md                   # Visão geral do sistema (Medallion + ADLS)
+    ├── modelo_score.md                  # Pipeline de rating dos FIDCs
+    ├── credit_model.md                  # Modelo de crédito por empresa pagadora
+    ├── match_engine.md                  # Engine de match cliente × FIDC
+    ├── fontes_dados.md                  # ANBIMA + BCB + CVM + estrutura Gold
+    ├── powerbi_setup.md                 # Conexão Power BI Desktop
+    ├── runbook.md                       # Playbook operacional (falhas, rotação, heurísticas)
+    ├── operacao.md                      # Estado atual (auto-atualizado pelo workflow)
+    ├── limitacoes_atuais.md             # Heurísticas ativas + histórico de substituições
+    ├── historico-runs.csv               # Histórico completo de runs do data-refresh
+    ├── plans/                           # Planos de fase (execução)
+    └── superpowers/specs/               # Specs de design (brainstorming)
 ```
 
 ---
@@ -268,12 +277,11 @@ Helpers em [`scripts/lib/formatters.py`](scripts/lib/formatters.py).
 
 ### Limitações dos modelos
 
-- **Rating FIDC**: clusters K-Means podem oscilar entre runs em datasets muito homogêneos; usar `random_state=42`.
-- **Projeções macro**: `selic_proj` e `ipca_proj` são heurísticas (`selic - 0.5`, `ipca × 0.9`), sinalizadas via `is_proj_heuristica: true`.
-- **Credit model**: snapshot single-cohort, sem variáveis macro nas features.
-- **Match**: ignora segmento de atuação do FIDC; sem bloqueio CVM 555.
+- **Credit model**: snapshot single-cohort, sem variáveis macro nas features. Retreino multi-cohort depende de histórico mensal de clientes no Gold (pendente no pipeline Databricks).
 
-Detalhes:
+Ver [`docs/limitacoes_atuais.md`](docs/limitacoes_atuais.md) para a lista viva, detalhes técnicos e histórico de heurísticas já substituídas (K-Means → tercis, `selic-0.5` → Focus BCB, match com filtros CVM 555 + segmento).
+
+Detalhes técnicos por modelo:
 - [docs/modelo_score.md](docs/modelo_score.md)
 - [docs/credit_model.md](docs/credit_model.md)
 - [docs/match_engine.md](docs/match_engine.md)
@@ -302,6 +310,19 @@ Classificação:
 | 🔴 **D** | 0–39 |
 
 Detalhes: [docs/modelo_score.md](docs/modelo_score.md)
+
+---
+
+## 🛠 Operação
+
+O dashboard atualiza automaticamente via GitHub Actions (cron 9h UTC). Para resposta a incidentes, rotação de credenciais e evolução do manifesto de qualidade, comece pelo runbook.
+
+| Documento | Para que serve |
+|-----------|----------------|
+| [`docs/runbook.md`](docs/runbook.md) | Playbook completo: branch protection, fluxo diário, diagnóstico por modo de falha, rotação de Account Key, gestão de heurísticas. |
+| [`docs/operacao.md`](docs/operacao.md) | Estado atual auto-atualizado: último run, últimos 14 runs, histórico de rotação de keys, SLOs alvo. |
+| [`docs/historico-runs.csv`](docs/historico-runs.csv) | Histórico completo de execuções do `data-refresh.yml` (append-only). |
+| [`docs/limitacoes_atuais.md`](docs/limitacoes_atuais.md) | Heurísticas ativas + histórico de substituições. |
 
 ---
 

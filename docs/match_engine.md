@@ -59,11 +59,13 @@ Antes mesmo de calcular o score:
 |---|---|
 | `MESES_HISTORICO < 6` | Sim (excluído antes do loop) |
 | `SCORE_RISCO` é NaN | Sim (correção de bug — antes virava 50 sintético) |
-| `match_score < 20` | Sim (descarta matches ruins) |
+| `match_score < 50` (`MIN_ELEGIBILIDADE`) | Sim (descarta matches abaixo do piso de elegibilidade da Fase 3) |
+
+> Existe ainda a constante `MIN_MATCH_SCORE = 20` em `scripts/match.py`. É piso histórico, sem efeito prático: `MIN_ELEGIBILIDADE = 50` é o filtro efetivo. Marcada para remoção.
 
 ## Saída
 
-Excel `data_real/matches.xlsx` com 5 abas:
+Excel `gold/final/matches.xlsx` (ADLS) com 5 abas:
 
 | Aba | Conteúdo |
 |---|---|

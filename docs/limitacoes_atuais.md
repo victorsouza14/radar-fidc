@@ -10,7 +10,7 @@
 
 ## Heurísticas ativas
 
-Cada entrada abaixo é um valor calculado por aproximação, não por leitura direta de fonte oficial. O manifesto `data-quality.json` lista todas em `heuristic_fields` e o frontend injeta um marker ⚠ inline ao lado do valor correspondente.
+Cada entrada abaixo é um valor calculado por aproximação, não por leitura direta de fonte oficial. O manifesto `data-quality.json` lista todas em `heuristic_fields` e serve como registro de auditoria server-side. O dashboard não exibe marker visual para essas heurísticas — consulte este documento e o manifesto para auditoria de qualidade.
 
 ### `credit.scoring`
 
@@ -40,17 +40,17 @@ A engine de match em `scripts/match.py` detecta presença/ausência por coluna e
 
 ---
 
-## Como ler o trust bar
+## Qualidade de dados — onde olhar
 
-O trust bar é um indicador sticky no topo do dashboard que sintetiza qualidade de dados em três cores. **Heurísticas não afetam a cor do trust bar** — essa foi uma decisão consciente de design para evitar "amarelo crônico" enquanto a Fase 3 não conclui. Heurísticas aparecem apenas como markers inline ⚠ ao lado do valor correspondente.
+O status de qualidade dos dados é mantido server-side em `data-quality.json` (auditoria), não exibido no dashboard. O manifesto contém:
 
-| Cor | Quando aparece |
-|-----|----------------|
-| 🟢 Verde | `pipeline_quality_check.overall_success: true` E todas as fontes em `data_freshness` com `status: "fresh"`. |
-| 🟡 Amarelo | `pipeline_quality_check.status: "not_run"` (Fase 3 ainda não habilitada) OU pelo menos uma fonte em `warn`. |
-| 🔴 Vermelho | `pipeline_quality_check.overall_success: false` OU qualquer fonte em `error`. |
+- `pipeline_quality_check` — resultado agregado das suites Great Expectations (`overall_success`, `suites_passed`, `suites_failed`).
+- `ci_quality_check` — flags de schema validation, regression check e smoke tests do workflow `data-refresh.yml`.
+- `data_freshness` — idade em dias de cada fonte (`macro`, `focus`) com status `fresh` / `warn` / `error`.
+- `heuristic_fields` — lista das heurísticas ativas (cada entrada também documentada aqui).
+- `replaced_heuristics` — histórico das substituições já realizadas.
 
-Os thresholds de freshness por fonte estão na Seção 4 da spec. Resumo:
+Thresholds de freshness por fonte:
 
 | Fonte | Cadência | `warn` | `error` |
 |-------|----------|--------|---------|
@@ -63,7 +63,7 @@ Os thresholds de freshness por fonte estão na Seção 4 da spec. Resumo:
 
 ## Histórico de heurísticas substituídas
 
-Entradas aparecem aqui quando a heurística for substituída por dado real. Replicado em `data-quality.json#replaced_heuristics` para auditoria do frontend.
+Entradas aparecem aqui quando a heurística é substituída por dado real. Replicado em `data-quality.json#replaced_heuristics` para auditoria.
 
 | Data | Heurística removida | Substituída por | Onde |
 |------|---------------------|-----------------|------|
@@ -87,7 +87,7 @@ Entradas aparecem aqui quando a heurística for substituída por dado real. Repl
   - `notebooks/01_bronze_ingestao/etl_focus.py`: GET diário, grava `bronze/focus/expectativas_top5_anuais_<YYYY-MM-DD>.csv` + cópia `latest`.
   - `notebooks/02_silver_tratamento/etl_focus.py`: pivot por (Indicador, DataReferencia), última pesquisa por par, salva `silver/focus/projecoes_anuais.parquet`.
   - `notebooks/03_gold_modelagem/02_indicadores_macro.py`: se Silver fresca (<14 dias), substitui `selic_projetada_12m` e `ipca_projetado_12m` + adiciona `proj_source: "bcb_focus_top5"` e `proj_date: <DataReferencia>` + `is_proj_heuristica: false`.
-- **Fallback:** se fetch falhar OU Silver indisponível OU pesquisa >14 dias, mantém heurística com `is_proj_heuristica: true` (frontend exibe marker ⚠).
+- **Fallback:** se fetch falhar OU Silver indisponível OU pesquisa >14 dias, mantém heurística com `is_proj_heuristica: true` registrado no payload e no manifesto de qualidade.
 
 #### `matches.engine` → CVM 555 + segmento + min elegibilidade
 
@@ -98,6 +98,6 @@ Entradas aparecem aqui quando a heurística for substituída por dado real. Repl
   - `cliente.segmento == fundo.segmento_predominante` → +30 pts.
   - `cliente.segmento ∈ fundo.segmentos_secundarios` → +15 pts.
   - Cap em 100 (bônus nunca ultrapassa o teto).
-- **Mínimo de elegibilidade:** `match_score >= 50` para entrar no top-N. Abaixo disso, dropa.
+- **Mínimo de elegibilidade:** matches com `match_score < 50` são descartados (`MIN_ELEGIBILIDADE = 50` em `scripts/match.py`). Existe ainda a constante `MIN_MATCH_SCORE = 20` como piso histórico interno — é dead branch a remover, sem efeito prático porque `MIN_ELEGIBILIDADE` é o filtro efetivo.
 - **Outputs novos:** colunas `S_SEGMENTO`, `SEGMENTO_MOTIVO`, `MATCH_BREAKDOWN` (JSON com componentes), `ELEGIBILIDADE` (JSON com `{cvm_555, fundo_ativo, segmento_alinhado}`).
 - **Modo permissivo:** colunas `restricao_cvm_555`, `status_anbima`, `segmento_predominante`, `segmentos_secundarios`, `e_qualificado`, `segmento` ainda não emitidas pelo pipeline Databricks (ver bloqueador acima). Engine detecta ausência por coluna e usa defaults seguros. Loga aviso no início da execução.

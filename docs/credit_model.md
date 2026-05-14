@@ -12,8 +12,8 @@ BAIXO / MEDIO / ALTO.
 - XGBoost (300 estimadores, max_depth=4, lr=0.05, scale_pos_weight ajustado)
 - Escolha automática do melhor por **AUC-ROC** em 5-fold CV estratificado
 
-Pipeline final: `SimpleImputer(median) → ModeloEscolhido`. Salva como
-`data_real/credit_model.pkl` (inclui imputer e LabelEncoders de UF/CNAE).
+Pipeline final: `SimpleImputer(median) → ModeloEscolhido`. Persistido em
+`gold/final/credit_model.pkl` no ADLS (inclui imputer e LabelEncoders de UF/CNAE).
 
 ## Definição de default (target)
 
@@ -25,9 +25,10 @@ Um boleto é marcado como inadimplido se **qualquer** das condições for verdad
 | `dt_pagamento` ausente **E** `dt_vencimento < hoje - 30 dias` | regra com carência |
 | `atraso_dias > 30` | calculado |
 
-> **Importante (correção de bug):** antes marcávamos como default *qualquer* boleto
-> sem `dt_pagamento`, mesmo os ainda não vencidos. Isso inflava `defaultou` e
-> enviesava o modelo. Agora exigimos vencimento + 30 dias de carência.
+> **Importante (correção de bug):** antes, o modelo marcava como default *qualquer*
+> boleto sem `dt_pagamento`, mesmo os ainda não vencidos. Isso inflava `defaultou` e
+> enviesava o modelo. Hoje, o pipeline exige vencimento + 30 dias de carência antes
+> de marcar default.
 
 Um **pagador** é considerado inadimplente se inadimpliu pelo menos uma vez (`max` da flag).
 
@@ -65,9 +66,10 @@ Um **pagador** é considerado inadimplente se inadimpliu pelo menos uma vez (`ma
 
 ## Anonimização (LGPD)
 
-O hash do CNPJ na base original é mantido **apenas** em arquivos privados
-(`data_real/scores_credito.csv`). No `data.json` público, é exibido como
-`EMP-XXXXXXXX` (primeiros 8 caracteres do hash em uppercase).
+O hash do CNPJ na base original é mantido **apenas** no Gold privado
+(`gold/final/scores_credito.csv` no ADLS, protegido por connection string).
+No `data.json` público, é exibido como `EMP-XXXXXXXX` (primeiros 8 caracteres
+do hash em uppercase).
 
 ## Implementação
 

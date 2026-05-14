@@ -88,7 +88,7 @@ Cada subseção segue o mesmo padrão: **sintoma**, **o que significa**, **açã
 
 **Ação:**
 
-1. Este caso **não bloqueia** o run — o trust bar fica amarelo (`not_run`) mas o dashboard atualiza normalmente.
+1. Este caso **não bloqueia** o run — o manifesto registra `status: "not_run"` mas o dashboard atualiza normalmente.
 2. Confirmar no Azure Portal: `dfdatalakesprint → containers → gold → final/_quality/expectations-result.json` existe?
 3. Se a ausência for sistemática após a Fase 3 entrar em produção, escalar com o time Databricks (canal `#radar-fidc-pipeline`).
 
@@ -182,7 +182,7 @@ Se um run quebrar imediatamente após a rotação com `AuthorizationFailure`, é
 
 ## 5. Adicionar uma heurística ao manifesto
 
-Sempre que um novo cálculo aproximado entrar no payload (ex: nova projeção macro derivada de fórmula), registre-o no manifesto para que o trust bar e os markers inline reflitam a realidade.
+Sempre que um novo cálculo aproximado entrar no payload (ex: nova projeção macro derivada de fórmula), registre-o no manifesto para auditoria de qualidade.
 
 **Passo 1:** Editar `scripts/lib/trust_manifest.py`, constante `HEURISTIC_FIELDS`, adicionar:
 
@@ -196,7 +196,7 @@ Sempre que um novo cálculo aproximado entrar no payload (ex: nova projeção ma
 
 **Passo 2:** Atualizar `scripts/lib/schemas.py` se a coluna correspondente passar a aceitar o valor heurístico (geralmente nenhuma mudança — heurísticas vivem em campos já permitidos).
 
-**Passo 3:** No JS da página que exibe o campo, chamar `markHeuristic("secao.campo")` ao renderizar o valor. O helper lê `data-quality.json` e injeta o marker ⚠ + tooltip automaticamente.
+**Passo 3:** O frontend não consome `heuristic_fields` atualmente; o manifesto serve apenas para auditoria server-side. Nenhuma alteração no JS é necessária ao adicionar a heurística.
 
 **Passo 4:** Adicionar a heurística a `docs/limitacoes_atuais.md` na tabela "Heurísticas ativas", indicando a substituição planejada e a fase de eliminação.
 
@@ -207,10 +207,9 @@ Sempre que um novo cálculo aproximado entrar no payload (ex: nova projeção ma
 Quando uma heurística for substituída por dado real (ex: projeções Focus do BCB substituindo `selic - 0.5`):
 
 1. Remover a entrada de `HEURISTIC_FIELDS` em `scripts/lib/trust_manifest.py`.
-2. Remover a chamada `markHeuristic("...")` no JS da página correspondente. Os markers somem sozinhos quando o array esvazia, mas é melhor limpar a chamada para reduzir ruído no código.
-3. Atualizar `scripts/lib/schemas.py` se o novo cálculo introduz campos novos (ex: `proj_source: "bcb_focus_top5"`).
-4. Mover a entrada para a seção "Histórico" de `docs/limitacoes_atuais.md`, registrando data, qual heurística saiu e o que a substituiu.
-5. Rodar `python scripts/generate_dashboard_data.py` local e validar que o trust bar permanece verde e os markers do campo somem.
+2. Atualizar `scripts/lib/schemas.py` se o novo cálculo introduz campos novos (ex: `proj_source: "bcb_focus_top5"`).
+3. Mover a entrada para a seção "Histórico" de `docs/limitacoes_atuais.md`, registrando data, qual heurística saiu e o que a substituiu.
+4. Rodar `python scripts/generate_dashboard_data.py` local e validar que o manifesto `data-quality.json` perdeu a entrada em `heuristic_fields` e ganhou correspondente em `replaced_heuristics`.
 
 ---
 

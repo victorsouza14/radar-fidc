@@ -17,8 +17,10 @@ A partir desse rating, calculamos também:
 Tab V (inadimplência + aging) ┐
 Tab X (SCR dos devedores)     │
 Tab I (concentração cedentes) ├──► features 4D ──► PCA (1º componente) ──► SCORE_RISCO 0–100
-Tab IV/Macro (fator macro)    │                ──► KMeans (3 clusters) ──► CATEGORIA_RISCO
-ANBIMA Série Histórica        ┘
+Tab IV/Macro (fator macro)    │                                                │
+ANBIMA Série Histórica        ┘                                                ▼
+                                                          Tercis (q33, q67) ──► CATEGORIA_RISCO
+                                                          BAIXO / MEDIO / ALTO
 ```
 
 ### Features (após StandardScaler)
@@ -40,10 +42,21 @@ score linear. O sinal é alinhado para que score baixo = risco baixo.
 
 Normalização min–max → 0..100.
 
-### Categoria (KMeans)
+### Categoria (tercis do SCORE_RISCO)
 
-3 clusters sobre as features padronizadas. Os clusters são rotulados pela média
-do `SCORE_RISCO` interno → BAIXO / MEDIO / ALTO.
+A categoria de risco vem dos **tercis** do `SCORE_RISCO` contínuo:
+
+```
+q33, q67 = SCORE_RISCO.quantile([0.33, 0.67])
+CATEGORIA_RISCO = pd.cut(SCORE_RISCO, bins=[-inf, q33, q67, inf],
+                         labels=["BAIXO", "MEDIO", "ALTO"])
+```
+
+Substituiu o K-Means original na Fase 3. Vantagens: determinístico (não depende
+de `random_state`), monotônico em relação ao `SCORE_RISCO` (fundo com score
+maior nunca cai em categoria mais conservadora que outro com score menor),
+auditável (basta inspecionar `q33` e `q67`) e estável entre runs — não havia
+re-clusterização sobre features rescaled pelo fator macro.
 
 ## Filtros de elegibilidade
 
@@ -105,6 +118,6 @@ Maior = melhor relação retorno/risco.
 ## Limitações conhecidas
 
 1. **Fundos novos (< 6 meses)** ficam de fora das listagens ordenadas mesmo que tenham score.
-2. **PCA + KMeans** não-supervisionado: os rótulos BAIXO/MEDIO/ALTO podem mudar entre runs em datasets muito homogêneos. Usar sempre `random_state=42`.
+2. **PCA não-supervisionado:** o sinal do PC1 pode inverter entre execuções; o pipeline corrige forçando o alinhamento (`pca.components_[0, 0] < 0` → inverte). A categoria é estável porque vem dos tercis do `SCORE_RISCO`, não dos componentes brutos.
 3. **Fator macro** afeta só `TAXA_INAD`; o ajuste poderia ser estendido para SCR e concentração.
-4. **Projeções macro** (`selic_proj`, `ipca_proj`) são heurísticas (não são as projeções oficiais do Focus). Flag `is_proj_heuristica` no payload sinaliza isso.
+4. **Projeções macro** vêm do Boletim Focus (BCB) quando a Silver está fresca (≤14 dias). Em fallback, o pipeline cai para heurística com `is_proj_heuristica: true` registrado no payload — ver `docs/limitacoes_atuais.md` para detalhes.

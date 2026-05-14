@@ -39,12 +39,19 @@ O Radar FIDC segue a **arquitetura Medallion** (Bronze → Silver → Gold), pad
 │  └─────────────────────────┬───────────────────────────────────┘   │
 │                            │ ETL Gold (Databricks)                  │
 │  ┌─────────────────────────▼───────────────────────────────────┐   │
-│  │  🥇 GOLD — Dados Analíticos (Parquet + CSV)                 │   │
-│  │  gold/score_fidc/          → score ponderado por FIDC       │   │
-│  │  gold/indicadores_macro/   → SELIC, IPCA, CDI atual         │   │
-│  │  gold/recomendacao_pme/    → matching PME × FIDC            │   │
-│  │  gold/dashboard_resumo/    → tabela mestre Power BI         │   │
-│  │  gold/powerbi/             → CSVs para consumo direto       │   │
+│  │  🥇 GOLD — Dados Analíticos                                  │   │
+│  │  gold/final/                  ← outputs canônicos do pipeline│   │
+│  │    ├─ rating_fidc.xlsx        → score, rating, retorno       │   │
+│  │    ├─ matches.xlsx            → match cliente × FIDC         │   │
+│  │    ├─ clientes.csv            → base de clientes             │   │
+│  │    ├─ scores_credito.csv      → credit model output          │   │
+│  │    ├─ _quality/expectations-result.json  → GE (Fase 3)       │   │
+│  │    ├─ macroeconomicos/        → consolidade.csv (BCB)        │   │
+│  │    ├─ anbima/                 → snapshots ANBIMA tratados    │   │
+│  │    ├─ cda/                    → cda_fi_AAAAMM.{csv,parquet}  │   │
+│  │    └─ info_mensal/            → inf_mensal_fidc_tab_*.*      │   │
+│  │  gold/indicadores_macro/      → indicadores.parquet (Focus)  │   │
+│  │  gold/powerbi/                → CSVs legacy para Power BI    │   │
 │  └─────────────────────────┬───────────────────────────────────┘   │
 └────────────────────────────┼────────────────────────────────────────┘
                              │
@@ -52,9 +59,9 @@ O Radar FIDC segue a **arquitetura Medallion** (Bronze → Silver → Gold), pad
               ▼                             ▼
 ┌─────────────────────┐       ┌─────────────────────────┐
 │   Dashboard HTML    │       │     Power BI Desktop     │
-│   (GitHub Pages)   │       │   (conexão via CSV/ADLS) │
+│   (GitHub Pages)    │       │  (conexão CSV/ADLS)      │
 │                     │       │                          │
-│  victorsouza14      │       │  POWERBI_SETUP.md        │
+│  victorsouza14      │       │  powerbi_setup.md        │
 │  .github.io/        │       │  (instruções completas)  │
 │  radar-fidc         │       │                          │
 └─────────────────────┘       └─────────────────────────┘
