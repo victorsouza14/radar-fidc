@@ -66,7 +66,13 @@ def build_macro(
             "dolar_venda": None,
         }
     last = df.iloc[-1]
-    selic = to_float(last.get("selic_meta"), None, 2)
+
+    # SELIC: preferimos SGS 1178 (taxa efetiva anualizada base 252) — é o valor
+    # que o mercado usa em "TAXA SELIC a.a." e que o BCB publica oficialmente.
+    # Fallback para SGS 432 (meta Copom) só se a efetiva não estiver disponível.
+    selic = to_float(last.get("selic_efetiva"), None, 2)
+    if selic is None:
+        selic = to_float(last.get("selic_meta"), None, 2)
 
     # CDI: o BCB devolve a taxa DIÁRIA (~0.055% a.d.). Anualizamos pelos ~252 dias úteis.
     # Guard: valores patológicos (<= -100% a.d.) gerariam NaN/Infinity. Mantém None.
@@ -76,18 +82,19 @@ def build_macro(
     else:
         cdi = None
 
-    # IPCA 12m acumulado em composição (não soma simples).
-    ipca_col = df.get("ipca_mensal")
-    if ipca_col is None:
-        ipca_col = pd.Series([], dtype=float)
-    ipca_serie = pd.to_numeric(ipca_col, errors="coerce").dropna().tail(12)
-    if not ipca_serie.empty:
-        acumulado = 1.0
-        for m in ipca_serie:
-            acumulado *= 1.0 + float(m) / 100.0
-        ipca_12m = round((acumulado - 1.0) * 100.0, 2)
-    else:
-        ipca_12m = None
+    # IPCA 12m: preferimos SGS 13522 (IPCA acumulado em 12 meses, série oficial BCB).
+    # Fallback para composição interna da série mensal se a oficial não estiver presente.
+    ipca_12m = to_float(last.get("ipca_12m_acumulado"), None, 2)
+    if ipca_12m is None:
+        ipca_col = df.get("ipca_mensal")
+        if ipca_col is None:
+            ipca_col = pd.Series([], dtype=float)
+        ipca_serie = pd.to_numeric(ipca_col, errors="coerce").dropna().tail(12)
+        if not ipca_serie.empty:
+            acumulado = 1.0
+            for m in ipca_serie:
+                acumulado *= 1.0 + float(m) / 100.0
+            ipca_12m = round((acumulado - 1.0) * 100.0, 2)
 
     cen = classify_selic(selic)
     cenario, descricao = cen.chave, cen.descricao

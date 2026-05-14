@@ -213,8 +213,13 @@ class MacroSchema(pa.DataFrameModel):
 
     data_processamento: Series[pa.DateTime] = pa.Field(nullable=False)
     selic_meta: Series[float] = pa.Field(ge=0.0, le=50.0, nullable=True)
+    # SGS 1178 — SELIC efetiva anualizada (base 252). Pode ficar NaN nas
+    # linhas historicamente importadas antes da Fase 3 (linhas mais antigas).
+    selic_efetiva: Series[float] = pa.Field(ge=0.0, le=50.0, nullable=True)
     cdi_diario: Series[float] = pa.Field(ge=-1.0, le=5.0, nullable=True)
     ipca_mensal: Series[float] = pa.Field(ge=-5.0, le=30.0, nullable=True)
+    # SGS 13522 — IPCA acumulado 12 meses, série oficial.
+    ipca_12m_acumulado: Series[float] = pa.Field(ge=-10.0, le=100.0, nullable=True)
     inadimplencia_pj: Series[float] = pa.Field(ge=0.0, le=100.0, nullable=True)
     inadimplencia_pf: Series[float] = pa.Field(ge=0.0, le=100.0, nullable=True)
     ibc_br: Series[float] = pa.Field(nullable=True)

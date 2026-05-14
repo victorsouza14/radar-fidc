@@ -60,9 +60,11 @@ class MacroMetricas:
 
 METRICAS = {
     "selic_meta": 432,
+    "selic_efetiva": 1178,        # SELIC anualizada base 252 — valor que o mercado vê em "TAXA SELIC a.a."
     "cdi_diario": 12,
     "dolar_venda": 1,
     "ipca_mensal": 433,
+    "ipca_12m_acumulado": 13522,  # IPCA acumulado em 12 meses oficial — substitui composição interna
     "igpm_mensal": 189,
     "incc_m": 192,
     "ibc_br": 24364,
