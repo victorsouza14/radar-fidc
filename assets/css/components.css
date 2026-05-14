@@ -212,34 +212,30 @@ tbody td.cell-truncate {
   white-space: nowrap;
 }
 
-/* ─── MACRO STRIP (linha de indicadores agrupados em uma única caixa) ─── */
-.macro-strip {
+/* ─── MACRO CARDS (cada indicador em sua própria caixa) ──────────────── */
+.macro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s-4);
   margin-bottom: var(--s-6);
 }
-.macro-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--s-2);
-  align-items: stretch;
-  margin-top: var(--s-3);
+.macro-card {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s-5);
+  position: relative;
 }
-.macro-item {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: var(--s-3) var(--s-4);
-  /* Divider sutil entre itens; o último não tem borda direita. */
-  border-right: 1px solid var(--border);
-}
-.macro-row > .macro-item:last-child { border-right: none; }
 .macro-label {
   font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--fg-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: var(--s-2);
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
 }
+.macro-label svg { width: 14px; height: 14px; stroke-width: 1.75; }
 .macro-value {
   font-size: var(--fs-2xl);
   font-weight: 600;
@@ -252,6 +248,16 @@ tbody td.cell-truncate {
   font-size: var(--fs-xs);
   color: var(--fg-subtle);
   margin-top: var(--s-2);
+}
+
+/* KPI grid centralizado — usado quando há menos de 4 cards (ex.: visão geral
+   com SELIC movida para a linha de macroeconomia). Limita largura máxima
+   e centraliza horizontalmente. */
+.kpi-grid-centered {
+  justify-content: center;
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Callout discreto (substitui o "cenário-box" gradiente). */
@@ -746,10 +752,9 @@ tbody td.cell-truncate {
   .kpi-card    { padding: var(--s-4); }
   .kpi-value   { font-size: var(--fs-xl); }
 
-  .macro-row    { grid-template-columns: repeat(2, 1fr); gap: 0; }
-  .macro-item   { padding: var(--s-3); border-right: 1px solid var(--border); }
-  .macro-row > .macro-item:nth-child(2n) { border-right: none; }
-  .macro-value  { font-size: var(--fs-xl); }
+  .macro-grid  { gap: var(--s-3); }
+  .macro-card  { padding: var(--s-4); }
+  .macro-value { font-size: var(--fs-xl); }
 
   .stat-block { padding: var(--s-3); }
   .stat-value { font-size: var(--fs-lg); }
@@ -811,10 +816,7 @@ tbody td.cell-truncate {
 }
 
 @media (max-width: 480px) {
-  .kpi-grid              { grid-template-columns: 1fr; }
-  .macro-row             { grid-template-columns: 1fr; }
-  .macro-item            { border-right: none; border-bottom: 1px solid var(--border); padding: var(--s-3); }
-  .macro-row > .macro-item:last-child { border-bottom: none; }
+  .kpi-grid, .macro-grid { grid-template-columns: 1fr; }
   .stats-grid            { grid-template-columns: 1fr; }
   .kpi-value, .macro-value, .stat-value { font-size: var(--fs-lg); }
   tbody td.cell-truncate { max-width: 130px; }
