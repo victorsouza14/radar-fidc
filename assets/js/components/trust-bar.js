@@ -104,13 +104,8 @@ function summaryLine(manifest) {
     parts.push(`Atualizado: ${formatTimestamp(ts)}`);
   }
 
-  const heuristics = Array.isArray(manifest.heuristic_fields)
-    ? manifest.heuristic_fields.length
-    : 0;
-  if (heuristics > 0) {
-    parts.push(`${heuristics} heurística${heuristics === 1 ? "" : "s"} ativa${heuristics === 1 ? "" : "s"}`);
-  }
-
+  // Detalhamento de heurísticas fica no painel expandido (clique no caret),
+  // não no resumo inline. Mantém o header limpo.
   return parts.join(" · ");                 // " · "
 }
 
