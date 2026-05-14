@@ -56,35 +56,60 @@ const table = createPaginatedTable({
   },
 });
 
-function average(items, field) {
-  if (!items.length) return null;
-  let sum = 0, count = 0;
-  for (const it of items) {
-    const v = it[field];
-    if (typeof v === "number" && !Number.isNaN(v)) { sum += v; count++; }
-  }
-  return count ? sum / count : null;
+function percentile(sorted, p) {
+  if (!sorted.length) return null;
+  const idx = (sorted.length - 1) * p;
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
 }
 
-function minMax(items, field) {
-  let min = null, max = null;
+// IQR (Tukey 1.5×): remove valores fora de [Q1-1.5·IQR, Q3+1.5·IQR].
+// Amostras < 4 são pequenas demais para a estatística — devolve cru.
+function withoutOutliers(items, field) {
+  const values = [];
   for (const it of items) {
     const v = it[field];
-    if (typeof v !== "number" || Number.isNaN(v)) continue;
-    if (min == null || v < min) min = v;
-    if (max == null || v > max) max = v;
+    if (typeof v === "number" && !Number.isNaN(v)) values.push(v);
   }
-  return { min, max };
+  if (values.length < 4) return values;
+  values.sort((a, b) => a - b);
+  const q1 = percentile(values, 0.25);
+  const q3 = percentile(values, 0.75);
+  const iqr = q3 - q1;
+  const lo = q1 - 1.5 * iqr;
+  const hi = q3 + 1.5 * iqr;
+  return values.filter(v => v >= lo && v <= hi);
+}
+
+function statsFromValues(values) {
+  if (!values.length) return { min: null, max: null, avg: null };
+  let min = values[0], max = values[0], sum = 0;
+  for (const v of values) {
+    if (v < min) min = v;
+    if (v > max) max = v;
+    sum += v;
+  }
+  return { min, max, avg: sum / values.length };
 }
 
 function renderStats(filtered) {
   const fmt = (v, d = 2) => v == null ? "—" : v.toFixed(d);
-  const { min, max } = minMax(filtered, "retorno_anual");
-  setText("fidcs-stat-retorno-max", fmt(max));
-  setText("fidcs-stat-retorno-min", fmt(min));
-  setText("fidcs-stat-vol",     fmt(average(filtered, "volatilidade")));
-  setText("fidcs-stat-inad",    fmt(average(filtered, "taxa_inad")));
-  setText("fidcs-stat-score",   fmt(average(filtered, "score_risco"), 1));
+  // Retorno descarta negativos antes do IQR — perdas históricas distorcem
+  // o mínimo e o produto pede apenas o intervalo positivo.
+  const positivos = filtered.filter(
+    f => typeof f.retorno_anual === "number" && f.retorno_anual > 0,
+  );
+  const ret = statsFromValues(withoutOutliers(positivos, "retorno_anual"));
+  setText("fidcs-stat-retorno-max", fmt(ret.max));
+  setText("fidcs-stat-retorno-min", fmt(ret.min));
+
+  const vol   = statsFromValues(withoutOutliers(filtered, "volatilidade"));
+  const inad  = statsFromValues(withoutOutliers(filtered, "taxa_inad"));
+  const score = statsFromValues(withoutOutliers(filtered, "score_risco"));
+  setText("fidcs-stat-vol",   fmt(vol.avg));
+  setText("fidcs-stat-inad",  fmt(inad.avg));
+  setText("fidcs-stat-score", fmt(score.avg, 1));
 }
 
 function renderScatter(filtered) {

@@ -10,9 +10,9 @@ const PERFIL_ORDER = ["CONSERVADOR", "MODERADO", "ARROJADO"];
 
 function renderKPIs() {
   const f = Store.fidcs.stats();
-  // Soma BAIXO+MEDIO+ALTO porque KPI exclui fundos sem classificação.
-  const porRisco = f.distribuicao?.por_risco ?? {};
-  const analisados = (porRisco.BAIXO ?? 0) + (porRisco.MEDIO ?? 0) + (porRisco.ALTO ?? 0);
+  // Conta o mesmo conjunto exibido na aba FIDCs (detalhe paginado) para
+  // que o KPI da visão geral case com o total da tabela.
+  const analisados = Store.fidcs.detalhe().length;
   setText("kpi-fundos", fmtInt(analisados));
   setText("kpi-classes", `de ${fmtInt(f.total_classes)} classes analisadas`);
 
