@@ -56,7 +56,6 @@ PESO_RETORNO = 0.20
 PESO_HISTORICO = 0.10
 
 MIN_MESES_HISTORICO = 6
-MIN_MATCH_SCORE = 20  # abaixo disso, descarta (antes do bônus de segmento)
 MIN_ELEGIBILIDADE = 50  # match_score final mínimo para entrar no top-N
 HISTORICO_FULL_SCORE = 24  # 24 meses → score 100
 TOP_N_DEFAULT = 5
@@ -64,6 +63,22 @@ TOP_N_DEFAULT = 5
 # Penalidades risco
 PENALIDADE_RISCO_ACIMA = 1.2  # fundo mais arriscado que apetite do cliente
 PENALIDADE_RISCO_ABAIXO = 0.5  # fundo mais conservador que apetite (penaliza menos)
+
+# Apetite a risco por perfil — escala 0-100 alinhada à do SCORE_RISCO dos
+# fundos. Substitui o uso direto de `cliente.score_perfil` (que vinha do
+# questionário e não tem semântica de "tolerância a risco" — um conservador
+# pode ter score_perfil=90 por responder com convicção, mas ainda assim
+# tolera pouco risco).
+#
+# Valores escolhidos como ponto médio aproximado de cada faixa do SCORE_RISCO
+# (tercis BAIXO < 33, MEDIO 33-67, ALTO > 67). Mantém comportamento intuitivo:
+# CONSERVADOR casa com fundos BAIXO; ARROJADO tolera ALTO com penalidade mínima.
+APETITE_POR_PERFIL: dict[str, float] = {
+    "CONSERVADOR": 25.0,
+    "MODERADO": 55.0,
+    "ARROJADO": 85.0,
+}
+APETITE_DEFAULT = 50.0  # perfil ausente/desconhecido → meio da escala
 
 # Score retorno por experiência
 EXPERIENCIA_INICIANTE = 1
@@ -88,6 +103,23 @@ STATUS_ANBIMA_ATIVO = "ativo"
 
 
 # ─── Score helpers ──────────────────────────────────────────────────────
+
+
+def apetite_de_perfil(perfil: Any) -> float:
+    """Mapeia o perfil de investidor (rótulo categórico) para apetite a risco
+    numérico (0-100), comparável com SCORE_RISCO do fundo.
+
+    Perfil ausente/desconhecido → ``APETITE_DEFAULT`` (50, meio da escala).
+    Comparar SCORE_RISCO do fundo com o ``score_perfil`` do questionário
+    (que mede assertividade, não tolerância a risco) misturava semânticas
+    e fazia um CONSERVADOR convicto ``score_perfil=90`` casar com fundos
+    ALTO com penalidade pequena — agora a comparação é direta:
+    apetite_cliente vs SCORE_RISCO do fundo.
+    """
+    if perfil is None or (isinstance(perfil, float) and pd.isna(perfil)):
+        return APETITE_DEFAULT
+    chave = str(perfil).strip().upper()
+    return APETITE_POR_PERFIL.get(chave, APETITE_DEFAULT)
 
 
 def score_risco(apetite_cliente: float, risco_fundo: float) -> float:
@@ -255,7 +287,11 @@ def calcular_match(cliente: pd.Series, fundo: pd.Series) -> MatchScores | None:
         return None
 
     s_perfil = score_perfil(cliente["perfil"], str(fundo.get("PERFIL_SUGERIDO", "")))
-    s_risco = score_risco(float(cliente["score_perfil"]), float(raw_score))
+    # Apetite a risco vem do PERFIL (CONSERVADOR/MODERADO/ARROJADO), não do
+    # `score_perfil` do questionário — ver `apetite_de_perfil` para o
+    # racional. `score_perfil` segue disponível em outras seções (KPI cliente).
+    apetite = apetite_de_perfil(cliente.get("perfil"))
+    s_risco = score_risco(apetite, float(raw_score))
     s_retorno = score_retorno_fit(
         int(cliente.get("experiencia", 2)),
         float(fundo.get("RETORNO_ANUAL", 0) or 0),
@@ -361,12 +397,10 @@ def rodar_match(
             if sc is None:
                 descartados_elg += 1
                 continue
-            # Threshold mínimo de elegibilidade: bloqueia entradas fracas no top-N.
-            # MIN_MATCH_SCORE é o piso histórico (mantido para regressão de comportamento);
-            # MIN_ELEGIBILIDADE é o piso novo da Fase 3 (>=50, empty-state amigável).
-            if sc.match_score < MIN_MATCH_SCORE:
-                descartados_min += 1
-                continue
+            # Threshold mínimo de elegibilidade (Fase 3): bloqueia entradas
+            # fracas no top-N e mantém o empty-state amigável no frontend.
+            # O piso histórico MIN_MATCH_SCORE=20 era dead branch (sempre
+            # subsumido por MIN_ELEGIBILIDADE=50) — removido.
             if sc.match_score < MIN_ELEGIBILIDADE:
                 descartados_min += 1
                 continue

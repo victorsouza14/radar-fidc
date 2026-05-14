@@ -11,6 +11,12 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+# Permite importar libs internas mesmo executando como script direto.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.lib.perfil_rules import PERFIL_SUGERIDO  # noqa: E402
+
 BASE = os.environ.get("RADAR_ARQUIVOS", str(ROOT / "data_real" / "arquivos"))
 OUTPUT = os.environ.get("RADAR_OUTPUT", str(ROOT / "data_real"))
 
@@ -321,58 +327,91 @@ def main() -> int:
     df_risk["CATEGORIA_RISCO"] = "SEM DADOS"
 
     df_ml = df_risk[mask_completo].copy()
-    df_ml["f_inad"] = df_ml["TAXA_INAD"] * fator_macro
-    df_ml["f_aging"] = df_ml["AGING_SCORE"].fillna(0)
-    df_ml["f_scr"] = df_ml["SCR_SCORE"]
-    df_ml["f_conc"] = df_ml["CONC_MAIOR_CEDENTE"]
 
-    FEAT_COLS = ["f_inad", "f_aging", "f_scr", "f_conc"]
-    FEAT_NAMES = ["Inadimplencia", "Aging", "SCR Devedor", "Concentracao"]
+    # Guard: sem fundos elegíveis (mask_completo zero). Pula PCA/tercis;
+    # df_risk fica com SCORE_RISCO=NaN e CATEGORIA_RISCO="SEM DADOS" — o
+    # pipeline a jusante (payload/match) já trata esse estado e usa o
+    # empty-state amigável no frontend.
+    if df_ml.empty:
+        print("  AVISO rating: zero fundos elegíveis após mask_completo, pulando classificação por PCA/tercis.")
+        print(f"  Fundos classificados (dados completos): 0 / {len(df_risk)}")
+    else:
+        feat_cols = ["f_inad", "f_aging", "f_scr", "f_conc"]
+        feat_names = ["Inadimplencia", "Aging", "SCR Devedor", "Concentracao"]
 
-    X = df_ml[FEAT_COLS].values
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+        df_ml["f_inad"] = df_ml["TAXA_INAD"] * fator_macro
+        df_ml["f_aging"] = df_ml["AGING_SCORE"].fillna(0)
+        df_ml["f_scr"] = df_ml["SCR_SCORE"]
+        df_ml["f_conc"] = df_ml["CONC_MAIOR_CEDENTE"]
 
-    # PCA: score contínuo pelo primeiro componente principal
-    pca = PCA(n_components=4, random_state=42)
-    X_pca = pca.fit_transform(X_scaled)
+        X = df_ml[feat_cols].values
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-    if pca.components_[0, 0] < 0:
-        X_pca[:, 0] *= -1
+        # PCA: score contínuo pelo primeiro componente principal.
+        # n_components nunca pode passar de min(n_samples, n_features) — em
+        # cenários degenerados (1 ou 2 fundos elegíveis) reduzimos o pedido.
+        n_comp = min(4, X_scaled.shape[0], X_scaled.shape[1])
+        pca = PCA(n_components=n_comp, random_state=42)
+        X_pca = pca.fit_transform(X_scaled)
 
-    score_raw = X_pca[:, 0]
-    scores_norm = (score_raw - score_raw.min()) / (score_raw.max() - score_raw.min()) * 100
-    df_ml["SCORE_RISCO"] = scores_norm
+        if pca.components_[0, 0] < 0:
+            X_pca[:, 0] *= -1
 
-    # CATEGORIA via tercis do SCORE_RISCO (determinístico, monotônico, auditável).
-    # Substituiu K-Means (Fase 3) para eliminar instabilidade entre runs causada
-    # por re-clusterização sobre features rescaled pelo fator macro. Combinado com
-    # `INAD_PJ_MEDIANA_HISTORICA` fixa, o rating é totalmente reproduzível.
-    q33, q67 = df_ml["SCORE_RISCO"].quantile([0.33, 0.67])
-    df_ml["CATEGORIA_RISCO"] = pd.cut(
-        df_ml["SCORE_RISCO"],
-        bins=[-np.inf, q33, q67, np.inf],
-        labels=["BAIXO", "MEDIO", "ALTO"],
-    )
+        score_raw = X_pca[:, 0]
+        # Guard contra divisão por zero: 1 único fundo elegível, ou todas as
+        # features pós-StandardScaler resultando em mesma projeção no PC1
+        # (vetores idênticos). Devolve 50 (meio da escala 0-100) para todos
+        # — empate honesto, log warning para visibilidade.
+        denom = float(score_raw.max() - score_raw.min())
+        if denom > 0:
+            scores_norm = (score_raw - score_raw.min()) / denom * 100.0
+        else:
+            print("  AVISO rating: SCORE_RISCO base com variância zero (PCA PC1 constante), atribuindo 50 a todos.")
+            scores_norm = np.full(len(score_raw), 50.0)
+        df_ml["SCORE_RISCO"] = scores_norm
 
-    # Devolve os resultados para df_risk
-    df_risk.loc[mask_completo, "SCORE_RISCO"] = df_ml["SCORE_RISCO"].values
-    df_risk.loc[mask_completo, "CATEGORIA_RISCO"] = df_ml["CATEGORIA_RISCO"].values
-    df_risk = df_risk.drop(columns=[c for c in df_risk.columns if c.startswith("f_")], errors="ignore")
+        # CATEGORIA via tercis do SCORE_RISCO (determinístico, monotônico, auditável).
+        # Substituiu K-Means (Fase 3) para eliminar instabilidade entre runs causada
+        # por re-clusterização sobre features rescaled pelo fator macro. Combinado com
+        # `INAD_PJ_MEDIANA_HISTORICA` fixa, o rating é totalmente reproduzível.
+        # Quando SCORE_RISCO é constante (denom=0), q33==q67 e pd.cut com bins
+        # repetidos quebraria — usamos duplicates="drop" e o pós-fill garante
+        # categoria não-nula para os fundos elegíveis.
+        q33, q67 = df_ml["SCORE_RISCO"].quantile([0.33, 0.67])
+        bins = [-np.inf, q33, q67, np.inf]
+        if denom > 0 and q33 < q67:
+            df_ml["CATEGORIA_RISCO"] = pd.cut(
+                df_ml["SCORE_RISCO"],
+                bins=bins,
+                labels=["BAIXO", "MEDIO", "ALTO"],
+            )
+        else:
+            # SCORE_RISCO constante → todos no mesmo tercil. Sinal de pouco
+            # poder discriminatório do PCA com a amostra atual; marcamos MEDIO.
+            df_ml["CATEGORIA_RISCO"] = pd.Categorical(
+                ["MEDIO"] * len(df_ml),
+                categories=["BAIXO", "MEDIO", "ALTO"],
+            )
 
-    # Diagnóstico
-    var_exp = pca.explained_variance_ratio_
-    loadings = dict(zip(FEAT_NAMES, pca.components_[0], strict=False))
-    print(f"  Fundos classificados (dados completos): {mask_completo.sum()} / {len(df_risk)}")
-    print(
-        f"  Variancia explicada -> PC1: {var_exp[0] * 100:.1f}%  PC2: {var_exp[1] * 100:.1f}%  PC3: {var_exp[2] * 100:.1f}%  PC4: {var_exp[3] * 100:.1f}%"
-    )
-    print("  Pesos aprendidos (loadings PC1):")
-    for nome, peso in sorted(loadings.items(), key=lambda x: abs(x[1]), reverse=True):
-        print(f"    {nome:<20}: {peso:+.4f}")
-    print(f"  Cortes tercis SCORE_RISCO -> q33: {q33:.2f}  q67: {q67:.2f}")
-    print(f"  Distribuicao por categoria: {df_risk['CATEGORIA_RISCO'].value_counts().to_dict()}")
-    print()
+        # Devolve os resultados para df_risk
+        df_risk.loc[mask_completo, "SCORE_RISCO"] = df_ml["SCORE_RISCO"].values
+        df_risk.loc[mask_completo, "CATEGORIA_RISCO"] = df_ml["CATEGORIA_RISCO"].values
+        df_risk = df_risk.drop(columns=[c for c in df_risk.columns if c.startswith("f_")], errors="ignore")
+
+        # Diagnóstico
+        var_exp = pca.explained_variance_ratio_
+        loadings_iter = zip(feat_names[: len(pca.components_[0])], pca.components_[0], strict=False)
+        loadings = dict(loadings_iter)
+        print(f"  Fundos classificados (dados completos): {mask_completo.sum()} / {len(df_risk)}")
+        var_str = "  ".join(f"PC{i + 1}: {var_exp[i] * 100:.1f}%" for i in range(len(var_exp)))
+        print(f"  Variancia explicada -> {var_str}")
+        print("  Pesos aprendidos (loadings PC1):")
+        for nome, peso in sorted(loadings.items(), key=lambda x: abs(x[1]), reverse=True):
+            print(f"    {nome:<20}: {peso:+.4f}")
+        print(f"  Cortes tercis SCORE_RISCO -> q33: {q33:.2f}  q67: {q67:.2f}")
+        print(f"  Distribuicao por categoria: {df_risk['CATEGORIA_RISCO'].value_counts().to_dict()}")
+        print()
 
     # Junta risco com retorno por classe
     df_final = ret_agg.merge(
@@ -391,25 +430,12 @@ def main() -> int:
         how="left",
     )
 
-    # Perfil de investidor: cruza tipo de cota x categoria de risco
-    perfil_map = {
-        # (TIPO_COTA, CATEGORIA_RISCO) -> PERFIL
-        ("UNICA", "BAIXO"): "CONSERVADOR",
-        ("UNICA", "MEDIO"): "MODERADO",
-        ("UNICA", "ALTO"): "ARROJADO",
-        ("SENIOR", "BAIXO"): "CONSERVADOR",
-        ("SENIOR", "MEDIO"): "MODERADO",
-        ("SENIOR", "ALTO"): "MODERADO",
-        ("MEZANINO", "BAIXO"): "MODERADO",
-        ("MEZANINO", "MEDIO"): "MODERADO",
-        ("MEZANINO", "ALTO"): "ARROJADO",
-        ("JUNIOR", "BAIXO"): "MODERADO",
-        ("JUNIOR", "MEDIO"): "ARROJADO",
-        ("JUNIOR", "ALTO"): "ARROJADO",
-    }
-
+    # Perfil de investidor: cruza tipo de cota x categoria de risco.
+    # Fonte única em `scripts/lib/perfil_rules.PERFIL_SUGERIDO` para evitar
+    # divergência com o questionário (cadastro.py) e o engine (match.py).
     df_final["PERFIL_SUGERIDO"] = df_final.apply(
-        lambda r: perfil_map.get((r["TIPO_COTA"], r["CATEGORIA_RISCO"]), "SEM DADOS"), axis=1
+        lambda r: PERFIL_SUGERIDO.get((r["TIPO_COTA"], r["CATEGORIA_RISCO"]), "SEM DADOS"),
+        axis=1,
     )
 
     # Retorno ajustado ao risco (quanto retorno por ponto de risco).

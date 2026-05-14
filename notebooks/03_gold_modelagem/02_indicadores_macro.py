@@ -150,7 +150,14 @@ ind["is_proj_heuristica"] = True
 ind["proj_source"] = "heuristica_local"
 
 if not df_macro.empty:
-    ind["selic_atual"] = ultimo_valor(df_macro, ["selic_meta", "selic"])
+    # SELIC: alinhar com o frontend (`scripts/lib/payload.build_macro`), que
+    # prefere `selic_efetiva` (SGS 1178 — taxa efetiva anualizada base 252,
+    # ~14,4% em maio/26) com fallback para `selic_meta` (SGS 432 — meta Copom,
+    # ~13,75%). Antes o notebook usava só `selic_meta`, então o cenário do
+    # parquet dizia "SELIC 13,75%" enquanto o dashboard exibia 14,4%.
+    ind["selic_atual"] = ultimo_valor(df_macro, ["selic_efetiva"])
+    if ind["selic_atual"] is None:
+        ind["selic_atual"] = ultimo_valor(df_macro, ["selic_meta", "selic"])
     ind["cdi_atual"] = ultimo_valor(df_macro, ["cdi"])
     ind["ipca_12m"] = soma_ultimos_12(df_macro, ["ipca"])
     # Heurística (default) — substituída adiante por Focus se disponível e fresh.

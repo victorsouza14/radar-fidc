@@ -25,9 +25,10 @@
 #   2. matches       — 6 expectativas (match_score 0-100, CNPJ_FUNDO not null, ...)
 #   3. clientes      — 5 expectativas (CPF regex pré-mask, segmento ∈ enum, ...)
 #   4. credit        — 5 expectativas (scoring 0-1000, modelo_version, trained_at)
-#   5. macro         — 5 expectativas (SELIC 0-50, IPCA -5..30, data_ref NN)
+#   5. macro         — 7 expectativas (SELIC meta+efetiva 0-50, IPCA mensal -5..30,
+#                      IPCA 12m -10..100, data_ref NN, inadimplência PJ/PF)
 #
-# Total: 31 expectativas distribuídas em 5 suites.
+# Total: 33 expectativas distribuídas em 5 suites.
 
 # Databricks notebook source
 # MAGIC %pip install great_expectations azure-storage-blob pandas pyarrow openpyxl
@@ -279,10 +280,19 @@ def suite_credit(df: pd.DataFrame) -> list[dict[str, Any]]:
 
 
 def suite_macro(df: pd.DataFrame) -> list[dict[str, Any]]:
-    """5 expectativas: SELIC 0-50, IPCA -5..30, data_processamento NN."""
+    """7 expectativas: SELIC meta + efetiva 0-50, IPCA mensal -5..30,
+    IPCA 12m acumulado -10..100, data_processamento NN, inadimplência PJ/PF.
+
+    `selic_efetiva` (SGS 1178) é a série que o frontend prefere para
+    exibição e que o notebook de cenário macro usa para classificar — sua
+    ausência ou outlier degrada silenciosamente a UX. `ipca_12m_acumulado`
+    (SGS 13522) tem a mesma criticidade.
+    """
     return [
         expect_column_values_between(df, "selic_meta", 0.0, 50.0, allow_null=True),
+        expect_column_values_between(df, "selic_efetiva", 0.0, 50.0, allow_null=True),
         expect_column_values_between(df, "ipca_mensal", -5.0, 30.0, allow_null=True),
+        expect_column_values_between(df, "ipca_12m_acumulado", -10.0, 100.0, allow_null=True),
         expect_column_to_not_be_null(df, "data_processamento"),
         expect_column_values_between(df, "inadimplencia_pj", 0.0, 50.0, allow_null=True),
         expect_column_values_between(df, "inadimplencia_pf", 0.0, 50.0, allow_null=True),

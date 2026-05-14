@@ -147,7 +147,11 @@ def _freshness_from_df(
     if pd.isna(last):
         return {"data_ref": None, "age_days": None, "status": "error", "reason": "invalid_date"}
     today = pd.Timestamp.now("UTC").tz_localize(None).normalize()
-    last_norm = last.normalize() if hasattr(last, "normalize") else last
+    # `last` pode ser tz-aware (parquet ADLS preserva timezone) ou tz-naive
+    # (CSV silvers locais). Subtrair de `today` (tz-naive) com `last` tz-aware
+    # gera TypeError. Normalizamos para tz-naive antes de comparar.
+    last_naive = last.tz_localize(None) if getattr(last, "tz", None) is not None else last
+    last_norm = last_naive.normalize() if hasattr(last_naive, "normalize") else last_naive
     age = max(0, int((today - last_norm).days))
     return {
         "data_ref": last_norm.date().isoformat(),
