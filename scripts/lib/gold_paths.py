@@ -31,6 +31,11 @@ PATHS: dict[str, str] = {
     "clientes": f"{GOLD_PREFIX}/clientes.csv",
     "credit": f"{GOLD_PREFIX}/scores_credito.csv",
     "macro": f"{GOLD_PREFIX}/macroeconomicos/consolidade.csv",
+    # Indicadores macro consolidados pelo notebook 02_indicadores_macro,
+    # incluem projeções Focus (selic_projetada_12m, ipca_projetado_12m).
+    # Caminho legacy do Power BI — fora do GOLD_PREFIX final/ por design
+    # (a pipeline Databricks atualiza esse parquet diretamente).
+    "focus_indicators": "indicadores_macro/indicadores.parquet",
 }
 
 # Diretório de cache local (resolvido para path absoluto pelo azure_io).

@@ -153,6 +153,33 @@ def read_rating() -> tuple[pd.DataFrame, pd.DataFrame]:
     return geral, resumo
 
 
+def read_focus_indicators() -> dict[str, Any] | None:
+    """Lê `indicadores_macro/indicadores.parquet` (output do 02_indicadores_macro).
+
+    Devolve dict com as projeções Focus consolidadas — usado por
+    `payload.build_macro` para substituir as heurísticas internas pelos valores
+    oficiais do Boletim Focus.
+
+    Devolve `None` se o blob não existe (degradação graciosa — payload cai
+    para o cálculo heurístico antigo com `is_proj_heuristica=True`).
+    """
+    try:
+        data = azure_io.download_to_bytes(PATHS["focus_indicators"])
+    except Exception as exc:
+        from azure.core.exceptions import ResourceNotFoundError
+
+        if isinstance(exc, ResourceNotFoundError):
+            log.warn("focus_indicators_not_found", path=PATHS["focus_indicators"])
+            return None
+        raise
+    import io as _io
+    df = pd.read_parquet(_io.BytesIO(data))
+    if df.empty:
+        return None
+    log.info("focus_indicators_loaded", rows=len(df))
+    return {str(k): v for k, v in df.iloc[0].to_dict().items()}
+
+
 def read_matches() -> tuple[pd.DataFrame, pd.DataFrame]:
     try:
         sheets = azure_io.read_excel_sheets(PATHS["matches"], ["TODOS_OS_MATCHES", "RANKING_FUNDOS"])

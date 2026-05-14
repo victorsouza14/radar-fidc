@@ -78,13 +78,16 @@ def build_all() -> tuple[dict, dict]:
     log.info("reading", source="macroeconomicos/consolidade.csv")
     df_macro = io_utils.read_macro()
 
+    log.info("reading", source="indicadores_macro/indicadores.parquet (Focus)")
+    focus_indicators = io_utils.read_focus_indicators()
+
     payload_dict: dict = {
         "generated_at": now_iso_utc(),
         "config": {
             "min_meses_historico": payload.MIN_MESES_HISTORICO,
             "retorno_outlier_pct": payload.RETORNO_OUTLIER_PCT,
         },
-        "macro": payload.build_macro(df_macro),
+        "macro": payload.build_macro(df_macro, focus_indicators),
         "fidcs": payload.build_fidcs(geral, resumo),
         "clientes": payload.build_clientes(df_clientes),
         "matches": payload.build_matches(todos, ranking),

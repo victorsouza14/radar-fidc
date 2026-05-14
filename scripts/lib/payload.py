@@ -45,7 +45,10 @@ RETORNO_MENSAL_CLIP = 0.5
 # A regra de cenário vive em scripts/lib/scenario.py (fonte única).
 
 
-def build_macro(df: pd.DataFrame) -> dict[str, Any]:
+def build_macro(
+    df: pd.DataFrame,
+    focus_indicators: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     fallback_date = datetime.today().strftime("%Y-%m-%d")
     if df.empty:
         return {
@@ -91,15 +94,34 @@ def build_macro(df: pd.DataFrame) -> dict[str, Any]:
     ref = last.get("data_processamento")
     data_ref = ref.strftime("%Y-%m-%d") if pd.notna(ref) else fallback_date
 
-    # `selic_proj` e `ipca_proj` são aproximações heurísticas (NÃO são as projeções
-    # oficiais do Focus/BCB). Mantemos com a flag is_proj_heuristica=True para o front
-    # poder exibir um aviso de "estimativa simples".
-    selic_proj = round(selic - 0.5, 2) if selic is not None else None
-    ipca_proj = (
-        round(ipca_12m * 0.9, 2)
-        if ipca_12m is not None and ipca_12m > 0
-        else (round(ipca_12m, 2) if ipca_12m is not None else None)
-    )
+    # Projeções: prioridade para Boletim Focus (BCB) via indicadores.parquet.
+    # Fallback para heurística simples se Focus indisponível ou stale.
+    proj_source: str | None = None
+    proj_date: str | None = None
+    selic_proj_2026: float | None = None
+    selic_proj_2027: float | None = None
+    ipca_proj_2026: float | None = None
+    ipca_proj_2027: float | None = None
+    if focus_indicators and focus_indicators.get("is_proj_heuristica") is False:
+        selic_proj = to_float(focus_indicators.get("selic_projetada_12m"), None, 2)
+        ipca_proj = to_float(focus_indicators.get("ipca_projetado_12m"), None, 2)
+        is_heuristica = False
+        proj_source = str(focus_indicators.get("proj_source") or "bcb_focus_top5")
+        proj_date_raw = focus_indicators.get("proj_date")
+        proj_date = str(proj_date_raw) if proj_date_raw is not None else None
+        selic_proj_2026 = to_float(focus_indicators.get("selic_proj_2026"), None, 2)
+        selic_proj_2027 = to_float(focus_indicators.get("selic_proj_2027"), None, 2)
+        ipca_proj_2026 = to_float(focus_indicators.get("ipca_proj_2026"), None, 2)
+        ipca_proj_2027 = to_float(focus_indicators.get("ipca_proj_2027"), None, 2)
+    else:
+        # Fallback heurístico (sinalizado com is_proj_heuristica=True).
+        selic_proj = round(selic - 0.5, 2) if selic is not None else None
+        ipca_proj = (
+            round(ipca_12m * 0.9, 2)
+            if ipca_12m is not None and ipca_12m > 0
+            else (round(ipca_12m, 2) if ipca_12m is not None else None)
+        )
+        is_heuristica = True
 
     return {
         "selic": selic,
@@ -107,7 +129,13 @@ def build_macro(df: pd.DataFrame) -> dict[str, Any]:
         "ipca": ipca_12m,
         "selic_proj": selic_proj,
         "ipca_proj": ipca_proj,
-        "is_proj_heuristica": True,
+        "is_proj_heuristica": is_heuristica,
+        "proj_source": proj_source,
+        "proj_date": proj_date,
+        "selic_proj_2026": selic_proj_2026,
+        "selic_proj_2027": selic_proj_2027,
+        "ipca_proj_2026": ipca_proj_2026,
+        "ipca_proj_2027": ipca_proj_2027,
         "cenario": cenario,
         "descricao": descricao,
         "data_ref": data_ref,
