@@ -127,7 +127,7 @@ let tooltipEl = null;
 function ensureTooltip() {
   if (tooltipEl) return tooltipEl;
   tooltipEl = document.createElement("div");
-  tooltipEl.className = "tooltip";
+  tooltipEl.className = "tooltip-hover";
   tooltipEl.setAttribute("role", "tooltip");
   document.body.appendChild(tooltipEl);
   return tooltipEl;
