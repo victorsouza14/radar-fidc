@@ -166,15 +166,49 @@ class TestBuildManifest:
             smoke_tests_result="pass",
         )
         keys = {h["field"] for h in manifest["heuristic_fields"]}
-        # Heurísticas conhecidas na Fase 2 (vão sumir na Fase 3).
-        assert "macro.selic_proj" in keys
-        assert "macro.ipca_proj" in keys
+        # Pós-Fase 3 (2026-05-14): apenas credit.scoring permanece como
+        # heurística ativa (bloqueador externo: histórico mensal de clientes
+        # ainda não disponível no Gold). Ver REPLACED_HEURISTICS para as
+        # 4 substituídas.
         assert "credit.scoring" in keys
-        assert "matches.engine" in keys
-        assert "rating.algorithm" in keys
+        assert "macro.selic_proj" not in keys
+        assert "macro.ipca_proj" not in keys
+        assert "matches.engine" not in keys
+        assert "rating.algorithm" not in keys
         for h in manifest["heuristic_fields"]:
             assert h["replaced_in_fase_3"] is True
             assert isinstance(h["method"], str) and h["method"]
+
+    def test_replaced_heuristics_present(self, macro_df_today: pd.DataFrame, empty_df: pd.DataFrame) -> None:
+        """Fase 3 — 4 heurísticas movidas para `replaced_heuristics` com data e novo método/fonte."""
+        from lib.trust_manifest import build_manifest
+
+        manifest = build_manifest(
+            macro_df=macro_df_today,
+            geral_df=empty_df,
+            matches_df=empty_df,
+            clientes_df=empty_df,
+            credit_df=empty_df,
+            pipeline_quality_result=None,
+            schema_validation_ok=True,
+            regression_check_result="pass",
+            smoke_tests_result="pass",
+        )
+        replaced = manifest["replaced_heuristics"]
+        assert isinstance(replaced, list)
+        assert len(replaced) == 4
+        keys = {h["field"] for h in replaced}
+        assert keys == {
+            "rating.algorithm",
+            "macro.selic_proj",
+            "macro.ipca_proj",
+            "matches.engine",
+        }
+        for h in replaced:
+            assert h["replaced_at"] == "2026-05-14"
+            # Cada entrada documenta OU new_method OU new_source.
+            assert "new_method" in h or "new_source" in h
+            assert isinstance(h.get("notes", ""), str)
 
     def test_schema_validation_failed_propagates(self, macro_df_today: pd.DataFrame, empty_df: pd.DataFrame) -> None:
         from lib.trust_manifest import build_manifest

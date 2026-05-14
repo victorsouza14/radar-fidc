@@ -9,6 +9,7 @@ Estrutura (Seção 4 da spec ``2026-05-14-radar-fidc-polimento-design.md``)::
       "data_freshness": {<fonte>: {data_ref, age_days, status}},
       "row_counts": {fidcs, matches, clientes, credit_empresas, macro_observations},
       "heuristic_fields": [{field, method, replaced_in_fase_3}],
+      "replaced_heuristics": [{field, replaced_at, new_method|new_source}],
       "source": {storage_account, container, path}
     }
 
@@ -17,9 +18,11 @@ Estrutura (Seção 4 da spec ``2026-05-14-radar-fidc-polimento-design.md``)::
 não rodou Great Expectations pela primeira vez), marca
 ``status: "not_run"`` em vez de quebrar o build.
 
-Heurísticas: lista fixa atual (Fase 2). Esvazia automaticamente conforme
-a Fase 3 elimina cada heurística — basta remover a entrada de
-``HEURISTIC_FIELDS``.
+Heurísticas:
+    - ``HEURISTIC_FIELDS``: lista das heurísticas AINDA ATIVAS. Esvazia
+      conforme cada uma é substituída por dado real.
+    - ``REPLACED_HEURISTICS``: histórico das já substituídas (auditoria).
+      Cada entrada documenta data e novo método/fonte.
 """
 
 from __future__ import annotations
@@ -42,32 +45,60 @@ FRESHNESS_THRESHOLDS: dict[str, tuple[int, int]] = {
 }
 
 
-# Heurísticas vivas na Fase 2. Remover entrada conforme Fase 3 substitui.
+# Heurísticas AINDA ATIVAS após Fase 3. ``credit.scoring`` permanece
+# bloqueada por dependência externa (histórico mensal de clientes no Gold).
 HEURISTIC_FIELDS: list[dict[str, Any]] = [
-    {
-        "field": "macro.selic_proj",
-        "method": "selic - 0.5 (heurística simples; substituir por Focus/BCB)",
-        "replaced_in_fase_3": True,
-    },
-    {
-        "field": "macro.ipca_proj",
-        "method": "ipca_12m * 0.9 (heurística simples; substituir por Focus/BCB)",
-        "replaced_in_fase_3": True,
-    },
     {
         "field": "credit.scoring",
         "method": "single-cohort sem features macro (substituir por multi-cohort)",
         "replaced_in_fase_3": True,
     },
-    {
-        "field": "matches.engine",
-        "method": "scoring sem filtro CVM 555 e sem peso por segmento",
-        "replaced_in_fase_3": True,
-    },
+]
+
+
+# Heurísticas JÁ SUBSTITUÍDAS — histórico para auditoria do trust manifest.
+# Adicionado em Fase 3 (2026-05-14). Quando todas as heurísticas de
+# ``HEURISTIC_FIELDS`` forem substituídas, o critério "Fase 3 completa" do
+# spec é atingido (``heuristic_fields: []``).
+REPLACED_HEURISTICS: list[dict[str, Any]] = [
     {
         "field": "rating.algorithm",
-        "method": "K-Means com fator_macro de mediana móvel (substituir por quantis)",
-        "replaced_in_fase_3": True,
+        "replaced_at": "2026-05-14",
+        "new_method": "score_risco_terciles",
+        "notes": (
+            "K-Means substituído por quantis do SCORE_RISCO (tercis "
+            "BAIXO/MEDIO/ALTO). INAD_PJ_MEDIANA_HISTORICA congelada como "
+            "constante versionada — elimina drift de fronteiras de cluster "
+            "entre runs."
+        ),
+    },
+    {
+        "field": "macro.selic_proj",
+        "replaced_at": "2026-05-14",
+        "new_source": "bcb_focus_top5",
+        "notes": (
+            "Substituído pela mediana das top 5 casas de análise do Boletim "
+            "Focus do BCB (endpoint Olinda OData). Fallback para heurística "
+            "se fetch falhar ou pesquisa for >14 dias velha."
+        ),
+    },
+    {
+        "field": "macro.ipca_proj",
+        "replaced_at": "2026-05-14",
+        "new_source": "bcb_focus_top5",
+        "notes": "Mesma fonte/fallback de macro.selic_proj.",
+    },
+    {
+        "field": "matches.engine",
+        "replaced_at": "2026-05-14",
+        "new_method": "cvm555_filter_plus_segmento_weighting",
+        "notes": (
+            "Adicionados filtros hard de CVM 555 (exclui restritos a "
+            "qualificados se cliente não qualifica) e status ANBIMA, bônus "
+            "+30 por segmento exato e +15 por segmento secundário, e mínimo "
+            "match_score >= 50 para entrar no top-N. Saída ganhou "
+            "MATCH_BREAKDOWN e ELEGIBILIDADE."
+        ),
     },
 ]
 
@@ -182,6 +213,7 @@ def build_manifest(
             "macro_observations": len(macro_df),
         },
         "heuristic_fields": [dict(h) for h in HEURISTIC_FIELDS],
+        "replaced_heuristics": [dict(h) for h in REPLACED_HEURISTICS],
         "source": {
             "storage_account": os.environ.get("AZURE_STORAGE_ACCOUNT", "dfdatalakesprint"),
             "container": os.environ.get("AZURE_FILESYSTEM", "gold"),
