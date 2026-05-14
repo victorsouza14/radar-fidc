@@ -7,7 +7,7 @@ Cobertura dos builders centrais usados por ``generate_dashboard_data.py``:
 - ``build_fidcs``: filtro ``MIN_MESES_HISTORICO``, distribuições estatísticas, dedup.
 - ``build_clientes``: PII mascarado, total consistente, distribuição.
 - ``build_matches``: top-N e estrutura vazia.
-- ``build_credit``: top-N por score, gating por ``dados_suficientes``, médias.
+- ``build_credit``: top-N por score com piso de boletos, médias agregadas.
 """
 
 from __future__ import annotations
@@ -17,9 +17,9 @@ from typing import Any
 import pandas as pd
 
 from lib.payload import (
+    CREDIT_MIN_BOLETOS,
     MAX_CREDIT,
     MAX_FIDC_DETALHE,
-    MIN_BOLETOS_SCORE_CONFIAVEL,
     MIN_MESES_HISTORICO,
     build_clientes,
     build_credit,
@@ -184,6 +184,9 @@ class TestBuildMacroCenario:
 
 
 # ─── BUILD_FIDCS ─────────────────────────────────────────────────────────
+# RETORNO_ANUAL default >= FIDCS_MIN_RETORNO_ANUAL (8%) para que as linhas-padrão
+# passem o filtro de elegibilidade. Testes que precisam validar o filtro
+# em si sobrescrevem RETORNO_ANUAL para valores menores.
 def _geral_row(**overrides: Any) -> dict[str, Any]:
     base: dict[str, Any] = {
         "CNPJ": "12345678000190",
@@ -193,7 +196,7 @@ def _geral_row(**overrides: Any) -> dict[str, Any]:
         "RISCO": "BAIXO",
         "SCORE_RISCO": 42.5,
         "PERFIL_SUGERIDO": "CONSERVADOR",
-        "RETORNO_ANUAL": 12.3,
+        "RETORNO_ANUAL": 18.0,
         "VOLATILIDADE": 3.0,
         "RETORNO_AJ_RISCO": 4.1,
         "TAXA_INADIMPLENCIA": 1.2,
@@ -222,37 +225,35 @@ class TestBuildFidcsEmpty:
 class TestBuildFidcsIndicadores:
     """Indicadores agregados são calculados server-side — frontend só renderiza.
 
-    Universo: ``MESES_HISTORICO >= 6`` e ``RETORNO_ANUAL >= SELIC_FLOOR (14.75%)``.
-    Espelha o filtro do ``match.py`` para que indicador bata com tabela de
-    matches no front.
+    Universo: ``MESES_HISTORICO >= 6`` e ``RETORNO_ANUAL >= FIDCS_MIN (8%)``.
+    Filtro da página de FIDCs — exclui perdas e retornos próximos de zero.
     """
 
-    def test_retorno_max_min_aplica_piso_selic(self) -> None:
-        """Retornos abaixo da SELIC (14.75%) saem do cálculo."""
+    def test_retorno_max_min_aplica_piso_de_8pct(self) -> None:
+        """Retornos abaixo de 8% saem do cálculo."""
         geral = pd.DataFrame(
             [
                 _geral_row(CNPJ=f"{i:014d}", FUNDO=f"F{i}", RETORNO_ANUAL=ret, MESES_HISTORICO=24)
-                for i, ret in enumerate([8.0, 12.0, 15.0, 22.0, -5.0, 0.0])
+                for i, ret in enumerate([3.0, 7.99, 8.0, 15.0, 22.0, -5.0])
             ]
         )
         ind = build_fidcs(geral)["stats"]["indicadores"]
-        # Só 15.0 e 22.0 passam o piso SELIC 14.75%.
+        # Só 8.0, 15.0 e 22.0 passam o piso de 8%.
         assert ind["retorno_max"] == 22.0
-        assert ind["retorno_min"] == 15.0
+        assert ind["retorno_min"] == 8.0
 
     def test_inad_media_eh_pos_iqr_no_universo_elegivel(self) -> None:
         rows = [
             _geral_row(
                 CNPJ=f"{i:014d}",
                 FUNDO=f"F{i}",
-                RETORNO_ANUAL=20.0,  # todos elegíveis
+                RETORNO_ANUAL=20.0,
                 TAXA_INADIMPLENCIA=v,
                 MESES_HISTORICO=24,
             )
             for i, v in enumerate([2.0, 3.0, 4.0, 5.0, 6.0, 9999.0])
         ]
         ind = build_fidcs(pd.DataFrame(rows))["stats"]["indicadores"]
-        # 9999 é descartado pelo IQR.
         assert ind["inad_media"] is not None
         assert ind["inad_media"] < 10
 
@@ -265,12 +266,11 @@ class TestBuildFidcsIndicadores:
             ]
         )
         ind = build_fidcs(geral)["stats"]["indicadores"]
-        # 99.0 do fundo curto não entra; só o confiável.
         assert ind["retorno_max"] == 20.0
 
-    def test_universo_vazio_se_nada_passa_selic(self) -> None:
-        """Se nenhum fundo bate o piso SELIC, indicadores ficam None."""
-        geral = pd.DataFrame([_geral_row(CNPJ="A", RETORNO_ANUAL=10.0, MESES_HISTORICO=24)])
+    def test_universo_vazio_se_nada_passa_piso(self) -> None:
+        """Se nenhum fundo bate o piso 8%, indicadores ficam None."""
+        geral = pd.DataFrame([_geral_row(CNPJ="A", RETORNO_ANUAL=5.0, MESES_HISTORICO=24)])
         ind = build_fidcs(geral)["stats"]["indicadores"]
         assert ind["retorno_max"] is None
         assert ind["retorno_min"] is None
@@ -473,7 +473,7 @@ def _credit_row(**overrides: Any) -> dict[str, Any]:
         "score_credito": 75.0,
         "prob_default": 0.12,
         "risco_credito": "BAIXO",
-        "total_boletos": 25,  # >= MIN_BOLETOS_SCORE_CONFIAVEL
+        "total_boletos": 25,  # >= CREDIT_MIN_BOLETOS
         "n_default": 0,
         "pct_default": 0.0,
         "defaultou": 0,
@@ -521,9 +521,9 @@ class TestBuildCredit:
     def test_top_n_ordenado_por_score(self) -> None:
         df = pd.DataFrame(
             [
-                _credit_row(id_cnpj="emp_low", score_credito=10.0, total_boletos=25),
-                _credit_row(id_cnpj="emp_high", score_credito=90.0, total_boletos=25),
-                _credit_row(id_cnpj="emp_mid", score_credito=50.0, total_boletos=25),
+                _credit_row(id_cnpj="emp_low", score_credito=10.0),
+                _credit_row(id_cnpj="emp_high", score_credito=90.0),
+                _credit_row(id_cnpj="emp_mid", score_credito=50.0),
             ]
         )
         out = build_credit(df)
@@ -533,29 +533,26 @@ class TestBuildCredit:
     def test_media_prob_default_calculada_quando_coluna_existe(self) -> None:
         df = pd.DataFrame(
             [
-                _credit_row(id_cnpj="emp1", prob_default=0.10, total_boletos=25),
-                _credit_row(id_cnpj="emp2", prob_default=0.30, total_boletos=25),
+                _credit_row(id_cnpj="emp1", prob_default=0.10),
+                _credit_row(id_cnpj="emp2", prob_default=0.30),
             ]
         )
         out = build_credit(df)
         assert out["stats"]["media_prob_default"] == 0.2
 
-    def test_score_e_prob_anulados_quando_dados_insuficientes(self) -> None:
-        """``total_boletos`` abaixo do limiar zera score/prob/pct para evitar
-        leitura ruidosa no front (que mostra "Dados insuficientes" no lugar)."""
-        df = pd.DataFrame([_credit_row(id_cnpj="emp_noisy", total_boletos=5)])
-        out = build_credit(df)
-        empresa = out["empresas"][0]
-        assert empresa["dados_suficientes"] is False
-        assert empresa["score"] is None
-        assert empresa["prob_default"] is None
-        assert empresa["pct_default"] is None
-
-    def test_empresa_acima_do_limiar_mantem_score(self) -> None:
+    def test_filtro_credit_min_boletos(self) -> None:
+        """Empresas com total_boletos < CREDIT_MIN_BOLETOS saem da lista exibida."""
         df = pd.DataFrame(
-            [_credit_row(id_cnpj="emp_ok", score_credito=72.5, total_boletos=MIN_BOLETOS_SCORE_CONFIAVEL)]
+            [
+                _credit_row(id_cnpj="emp_baixo", total_boletos=2),  # filtrado
+                _credit_row(id_cnpj="emp_ok", total_boletos=CREDIT_MIN_BOLETOS),  # entra
+                _credit_row(id_cnpj="emp_alto", total_boletos=50),  # entra
+            ]
         )
         out = build_credit(df)
-        empresa = out["empresas"][0]
-        assert empresa["dados_suficientes"] is True
-        assert empresa["score"] == 72.5
+        # 3 empresas no universo (stats.total) mas só 2 na lista (>=5 boletos).
+        assert out["stats"]["total"] == 3
+        assert out["stats"]["total_elegiveis"] == 2
+        assert len(out["empresas"]) == 2
+        nomes = {e["nome"] for e in out["empresas"]}
+        assert any("emp_ok"[:12].upper() in n.upper() for n in nomes) or len(nomes) == 2

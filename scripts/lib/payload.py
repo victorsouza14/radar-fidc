@@ -30,16 +30,20 @@ MAX_CREDIT = 500
 # Filtra fundos com pouco histórico (não confiáveis para ranking).
 MIN_MESES_HISTORICO = 6
 
-# Piso de retorno anual (%) para elegibilidade. Espelha ``SELIC`` em
-# ``data_fishermans_final/match.py``: fundos abaixo dessa taxa não entram
-# nas recomendações e tampouco nos indicadores agregados da carteira
-# (caso contrário "retorno mínimo" reflete fundos não-elegíveis).
-SELIC_FLOOR_RETORNO_ANUAL = 14.75
+# Piso de retorno anual (%) para a página de FIDCs (tabela + indicadores).
+# Filtro mais frouxo que o do match engine (que usa SELIC 14,75%) — aqui
+# o objetivo é mostrar todas as classes com retorno minimamente atrativo,
+# eliminando perdas (negativos), zeros e taxas próximas de inflação que
+# poluem o painel. Quem entra em recomendação ainda passa o piso SELIC
+# no ``match.py`` upstream.
+FIDCS_MIN_RETORNO_ANUAL = 8.0
 
-# Mínimo de boletos para que o score de crédito seja considerado confiável.
-# Empresas abaixo desse threshold são marcadas ``dados_suficientes=False`` e
-# o frontend renderiza "Dados insuficientes" no lugar dos valores numéricos.
-MIN_BOLETOS_SCORE_CONFIAVEL = 20
+# Piso mínimo de boletos para uma empresa entrar na lista exibida.
+# O ``credit_model.py`` canônico não filtra por boletos — gera score para
+# todas as empresas. Mas empresas com 1-2 boletos geram score artificialmente
+# alto (1 boleto pago = score ~99). Esse piso descarta apenas o ruído mais
+# grosseiro mantendo amostra grande (~2.5k empresas elegíveis no dataset FIAP).
+CREDIT_MIN_BOLETOS = 5
 
 
 # ─── MACRO ───────────────────────────────────────────────────────────
@@ -146,34 +150,29 @@ def _iqr_filter(series: pd.Series) -> pd.Series:
     return s[(s >= q1 - 1.5 * iqr) & (s <= q3 + 1.5 * iqr)]
 
 
-def _fidc_indicadores(confiaveis: pd.DataFrame) -> dict[str, Any]:
-    """Estatísticas resumidas da carteira ELEGÍVEL — fonte única, server-side.
+def _fidc_indicadores(elegiveis: pd.DataFrame) -> dict[str, Any]:
+    """Estatísticas resumidas da carteira da página — fonte única, server-side.
 
-    O universo é o mesmo que ``match.py`` aplica: ``MESES_HISTORICO >= 6``
-    (vem de ``confiaveis``) **e** ``RETORNO_ANUAL >= SELIC_FLOOR_RETORNO_ANUAL``.
-    Isso garante que o que aparece no card de indicadores bate com o que
-    aparece nas tabelas de match (retorno mínimo = SELIC efetiva no Gold).
+    Universo já chega filtrado pelo ``build_fidcs`` (histórico >= 6 meses
+    e retorno >= ``FIDCS_MIN_RETORNO_ANUAL``). Aqui só formata.
 
-    - retorno_max/min: extremos sobre o universo elegível (sem IQR, para não
-      mascarar o melhor/pior fundo recomendado).
-    - inad_media: aplica Tukey 1.5x IQR sobre a inadimplência do mesmo
-      universo (TAXA_INADIMPLENCIA tem outliers ~23k no Gold; IQR estabiliza).
+    - retorno_max/min: extremos brutos (sem IQR — não mascarar o melhor/pior).
+    - inad_media: aplica Tukey 1.5x IQR (``TAXA_INADIMPLENCIA`` tem outliers
+      ~23k no Gold; IQR estabiliza a média).
     """
-    if confiaveis.empty:
+    if elegiveis.empty:
         return {"retorno_max": None, "retorno_min": None, "inad_media": None}
 
     def _round_or_none(v: float | None, ndigits: int) -> float | None:
         return round(float(v), ndigits) if v is not None and not pd.isna(v) else None
 
-    retornos = pd.to_numeric(confiaveis["RETORNO_ANUAL"], errors="coerce").dropna()
-    elegiveis_mask = retornos >= SELIC_FLOOR_RETORNO_ANUAL
-    retornos_elegiveis = retornos[elegiveis_mask]
-    inad_elegivel = _iqr_filter(confiaveis.loc[retornos.index[elegiveis_mask], "TAXA_INADIMPLENCIA"])
+    retornos = pd.to_numeric(elegiveis["RETORNO_ANUAL"], errors="coerce").dropna()
+    inad = _iqr_filter(elegiveis["TAXA_INADIMPLENCIA"])
 
     return {
-        "retorno_max": _round_or_none(retornos_elegiveis.max() if len(retornos_elegiveis) else None, 2),
-        "retorno_min": _round_or_none(retornos_elegiveis.min() if len(retornos_elegiveis) else None, 2),
-        "inad_media": _round_or_none(inad_elegivel.mean() if len(inad_elegivel) else None, 2),
+        "retorno_max": _round_or_none(retornos.max() if len(retornos) else None, 2),
+        "retorno_min": _round_or_none(retornos.min() if len(retornos) else None, 2),
+        "inad_media": _round_or_none(inad.mean() if len(inad) else None, 2),
     }
 
 
@@ -189,10 +188,17 @@ def build_fidcs(geral: pd.DataFrame) -> dict[str, Any]:
             "detalhe": [],
         }
 
-    # Fundos com pouco histórico não são confiáveis para ranking.
-    # Eles continuam contando nas estatísticas globais, mas saem das listagens ordenadas.
-    confiaveis = geral[geral["MESES_HISTORICO"].fillna(0) >= MIN_MESES_HISTORICO]
-    deduped = confiaveis.drop_duplicates(subset=["CNPJ", "FUNDO", "TIPO_COTA"]).sort_values(
+    # Universo da página = histórico mínimo + retorno minimamente atrativo
+    # (>= FIDCS_MIN_RETORNO_ANUAL, 8% a.a.). Mais frouxo que o piso do
+    # match engine (14,75%) — aqui o objetivo é mostrar todas as classes
+    # que não são perdas/quase-zero, sem se prender ao filtro de
+    # recomendação. Universo bruto (geral) continua alimentando
+    # stats.distribuicao/total_classes (auditoria).
+    retornos = pd.to_numeric(geral["RETORNO_ANUAL"], errors="coerce")
+    elegiveis = geral[
+        (geral["MESES_HISTORICO"].fillna(0) >= MIN_MESES_HISTORICO) & (retornos >= FIDCS_MIN_RETORNO_ANUAL)
+    ]
+    deduped = elegiveis.drop_duplicates(subset=["CNPJ", "FUNDO", "TIPO_COTA"]).sort_values(
         "SCORE_RISCO", ascending=True
     )
 
@@ -205,7 +211,7 @@ def build_fidcs(geral: pd.DataFrame) -> dict[str, Any]:
                 "por_perfil": geral["PERFIL_SUGERIDO"].fillna("SEM DADOS").value_counts().to_dict(),
                 "por_cota": geral["TIPO_COTA"].fillna("UNICA").value_counts().to_dict(),
             },
-            "indicadores": _fidc_indicadores(confiaveis),
+            "indicadores": _fidc_indicadores(elegiveis),
         },
         "detalhe": [_fidc_detalhe_row(r) for _, r in deduped.head(MAX_FIDC_DETALHE).iterrows()],
     }
@@ -286,22 +292,16 @@ def _nome_empresa(raw: Any) -> str:
 
 
 def _credit_row(r: pd.Series) -> dict[str, Any]:
-    total_boletos = to_int(r.get("total_boletos"))
-    dados_suficientes = total_boletos >= MIN_BOLETOS_SCORE_CONFIAVEL
-    score = to_float(r.get("score_credito"), 0.0, 1) if dados_suficientes else None
-    prob_default = to_float(r.get("prob_default"), 0.0, 4) if dados_suficientes else None
-    pct_default = to_float(r.get("pct_default"), 0.0, 2) if dados_suficientes else None
     return {
         "nome": _nome_empresa(r.get("id_cnpj")),
         "setor": setor_from_cnae(r.get("cd_cnae_prin")),
         "uf": to_str(r.get("uf"), "—"),
-        "score": score,
-        "prob_default": prob_default,
+        "score": to_float(r.get("score_credito"), 0.0, 1),
+        "prob_default": to_float(r.get("prob_default"), 0.0, 4),
         "risco": to_str(r.get("risco_credito"), "SEM DADOS"),
-        "total_boletos": total_boletos,
+        "total_boletos": to_int(r.get("total_boletos")),
         "n_default": to_int(r.get("n_default")),
-        "pct_default": pct_default,
-        "dados_suficientes": dados_suficientes,
+        "pct_default": to_float(r.get("pct_default"), 0.0, 2),
     }
 
 
@@ -311,41 +311,36 @@ def build_credit(df: pd.DataFrame) -> dict[str, Any]:
             "empresas": [],
             "stats": {
                 "total": 0,
-                "total_confiaveis": 0,
+                "total_elegiveis": 0,
                 "por_risco": {},
                 "media_score": 0.0,
-                "min_boletos_score_confiavel": MIN_BOLETOS_SCORE_CONFIAVEL,
+                "credit_min_boletos": CREDIT_MIN_BOLETOS,
             },
         }
 
-    # Top-N por score (descendente). Resultado é determinístico e bate com a
-    # leitura "melhores empresas avaliadas" do frontend. Removido o mix
-    # head+tail+sample anterior, que produzia uma amostra estratificada não
-    # documentada e gerava colisões em datasets pequenos.
-    top = df.sort_values("score_credito", ascending=False).head(MAX_CREDIT)
+    # Empresas exibidas: histórico mínimo de ``CREDIT_MIN_BOLETOS`` boletos
+    # (filtra o ruído de 1-boleto que gera score artificial ~99). Ordenadas
+    # por score descendente para que as melhores apareçam primeiro.
+    elegiveis_mask = df["total_boletos"] >= CREDIT_MIN_BOLETOS
+    elegiveis = df[elegiveis_mask]
+    top = elegiveis.sort_values("score_credito", ascending=False).head(MAX_CREDIT)
 
-    confiaveis_mask = df["total_boletos"] >= MIN_BOLETOS_SCORE_CONFIAVEL
-    df_confiaveis = df[confiaveis_mask]
-
-    # Estatísticas agregadas usam apenas empresas com dados suficientes —
-    # caso contrário a média é dominada por scores ruidosos de empresas com
-    # 1-2 boletos. Por_risco mantém o universo total para auditoria.
-    stats_media_score = to_float(df_confiaveis["score_credito"].mean(), 0.0, 1) if len(df_confiaveis) else 0.0
+    stats_media_score = to_float(elegiveis["score_credito"].mean(), 0.0, 1) if len(elegiveis) else 0.0
     stats_media_prob = (
-        to_float(df_confiaveis["prob_default"].mean(), 0.0, 4)
-        if len(df_confiaveis) and "prob_default" in df_confiaveis
-        else 0.0
+        to_float(elegiveis["prob_default"].mean(), 0.0, 4) if len(elegiveis) and "prob_default" in elegiveis else 0.0
     )
 
     return {
         "empresas": [_credit_row(r) for _, r in top.iterrows()],
         "stats": {
             "total": len(df),
-            "total_confiaveis": int(confiaveis_mask.sum()),
-            "por_risco": df["risco_credito"].fillna("SEM DADOS").value_counts().to_dict(),
+            "total_elegiveis": int(elegiveis_mask.sum()),
+            "por_risco": elegiveis["risco_credito"].fillna("SEM DADOS").value_counts().to_dict(),
             "media_score": stats_media_score,
             "media_prob_default": stats_media_prob,
-            "taxa_default_observada": (to_float(df["defaultou"].mean(), 0.0, 4) if "defaultou" in df else 0.0),
-            "min_boletos_score_confiavel": MIN_BOLETOS_SCORE_CONFIAVEL,
+            "taxa_default_observada": (
+                to_float(elegiveis["defaultou"].mean(), 0.0, 4) if "defaultou" in elegiveis else 0.0
+            ),
+            "credit_min_boletos": CREDIT_MIN_BOLETOS,
         },
     }

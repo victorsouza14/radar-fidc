@@ -47,19 +47,9 @@ const applyFilters = memoize((s) => {
     if (s.risco && e.risco !== s.risco) continue;
     if (s.setor && e.setor !== s.setor) continue;
     if (s.uf    && e.uf    !== s.uf)    continue;
-
-    // Score/prob default só são comparáveis para empresas com dados suficientes.
-    // Quando o usuário aplica esses filtros, empresas insuficientes ficam de fora.
-    if (hasScoreFilter) {
-      if (!e.dados_suficientes) continue;
-      if (!inRange(e.score, s.scoreMin, s.scoreMax)) continue;
-    }
-    if (hasProbFilter) {
-      if (!e.dados_suficientes) continue;
-      if (!inRange(e.prob_default, s.probMin, s.probMax)) continue;
-    }
+    if (hasScoreFilter   && !inRange(e.score,         s.scoreMin,   s.scoreMax))   continue;
+    if (hasProbFilter    && !inRange(e.prob_default,  s.probMin,    s.probMax))    continue;
     if (hasBoletosFilter && !inRange(e.total_boletos, s.boletosMin, s.boletosMax)) continue;
-
     out.push(e);
   }
   return out;
@@ -70,28 +60,18 @@ const applyFilters = memoize((s) => {
   s.boletosMin, s.boletosMax,
 ].join("|"));
 
-const INSUFICIENTE_HTML = `<span class="badge-dados-insuficientes">Dados insuficientes</span>`;
-
-const rowTpl = (e) => {
-  const scoreCell = e.dados_suficientes
-    ? `<strong>${fmtNum(e.score)}</strong>`
-    : INSUFICIENTE_HTML;
-  const probCell  = e.dados_suficientes
-    ? fmtPct((e.prob_default ?? 0) * 100, 2)
-    : "—";
-  return `
+const rowTpl = (e) => `
     <tr>
       <td>${escapeHTML(e.nome)}</td>
       <td style="font-size:0.84rem;color:var(--fg-muted)">${escapeHTML(e.setor ?? "—")}</td>
       <td style="font-family:var(--font-mono);font-size:0.78rem">${escapeHTML(e.uf ?? "—")}</td>
-      <td>${scoreCell}</td>
-      <td>${probCell}</td>
+      <td><strong>${fmtNum(e.score)}</strong></td>
+      <td>${fmtPct((e.prob_default ?? 0) * 100, 2)}</td>
       <td><span class="badge ${riscoBadge(e.risco)}">${escapeHTML(e.risco)}</span></td>
       <td>${fmtInt(e.total_boletos)}</td>
       <td>${fmtInt(e.n_default)}</td>
       <td>${fmtPct((e.pct_default ?? 0) * 100, 1)}</td>
     </tr>`;
-};
 
 const table = createPaginatedTable({
   prefix: "credit",
