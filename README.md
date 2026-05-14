@@ -1,337 +1,297 @@
 <div align="center">
 
-# 🎣 Radar FIDC
+# Radar FIDC
 
-**Plataforma de análise, scoring e recomendação de FIDCs para PMEs**
+Plataforma de análise, scoring e recomendação de FIDCs para PMEs.
 
-[![Dashboard](https://img.shields.io/badge/Dashboard-Live-brightgreen?style=for-the-badge&logo=github)](https://victorsouza14.github.io/radar-fidc)
-[![Python](https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python)](https://python.org)
-[![Azure](https://img.shields.io/badge/Azure-Data%20Lake%20Gen2-0089D6?style=for-the-badge&logo=microsoft-azure)](https://azure.microsoft.com)
-[![Databricks](https://img.shields.io/badge/Databricks-Spark%2016.4-FF3621?style=for-the-badge&logo=databricks)](https://databricks.com)
-[![FIAP](https://img.shields.io/badge/FIAP-Sprint%20Final%202026-red?style=for-the-badge)](https://fiap.com.br)
+[![Dashboard](https://img.shields.io/badge/dashboard-live-brightgreen)](https://victorsouza14.github.io/radar-fidc)
+[![Python](https://img.shields.io/badge/python-3.11-blue)](https://python.org)
+[![Azure Data Lake Gen2](https://img.shields.io/badge/storage-ADLS%20Gen2-0089D6)](https://azure.microsoft.com)
+[![Databricks](https://img.shields.io/badge/compute-Databricks-FF3621)](https://databricks.com)
+[![License](https://img.shields.io/badge/license-academic-lightgrey)](#licença)
 
----
-
-### 🚀 [Acessar Dashboard →](https://victorsouza14.github.io/radar-fidc)
-
-*2.489 FIDCs · ANBIMA + BCB + CVM · Atualização diária via GitHub Action*
+**[Acessar dashboard →](https://victorsouza14.github.io/radar-fidc)**
 
 </div>
 
 ---
 
-## 📋 Índice
+## Sumário
 
-- [Problema e Solução](#-problema-e-solução)
-- [Dashboard](#-dashboard)
-- [Arquitetura](#-arquitetura)
-- [Fluxo de Atualização](#-fluxo-de-atualização)
-- [Estrutura do Repositório](#-estrutura-do-repositório)
-- [Como Executar](#-como-executar)
-- [Fontes de Dados](#-fontes-de-dados)
-- [Modelo de Score](#-modelo-de-score)
-- [Operação](#-operação)
-- [Time](#-time)
-
----
-
-## 💡 Problema e Solução
-
-PMEs enfrentam dificuldades para acessar crédito com condições favoráveis. Os **FIDCs**
-(Fundos de Investimento em Direitos Creditórios) são uma alternativa, mas existem
-**+2.400 fundos** registrados na ANBIMA, com riscos e retornos muito diferentes.
-
-O **Radar FIDC** automatiza essa análise:
-
-- Calcula um **score 0–100** por FIDC com base em retorno, risco, cenário macro e liquidez.
-- Casa o **perfil da PME** (segmento, necessidade, tolerância a risco) com os FIDCs mais aderentes.
-- Atualiza diariamente conforme novos dados ANBIMA/BCB/CVM chegam.
+- [O que é](#o-que-é)
+- [Páginas do dashboard](#páginas-do-dashboard)
+- [Arquitetura](#arquitetura)
+- [Stack](#stack)
+- [Como rodar localmente](#como-rodar-localmente)
+- [Pipeline automatizado](#pipeline-automatizado)
+- [Estrutura do repositório](#estrutura-do-repositório)
+- [Testes](#testes)
+- [Privacidade (LGPD)](#privacidade-lgpd)
+- [Operação](#operação)
+- [Time](#time)
+- [Licença](#licença)
 
 ---
 
-## 📊 Dashboard
+## O que é
 
-Acesse: **https://victorsouza14.github.io/radar-fidc**
+PMEs têm dificuldade de acessar crédito em condições competitivas. Os **FIDCs** (Fundos de Investimento em Direitos Creditórios) são uma alternativa relevante, mas existem mais de 6.000 classes registradas, com perfis de risco e retorno muito heterogêneos.
+
+O Radar FIDC consolida três blocos para apoiar a decisão:
+
+- **Análise comparativa de FIDCs** — score de risco, retorno, volatilidade e perfil sugerido por classe.
+- **Engine de match cliente × fundo** — alinha o perfil do investidor (cadastro) aos FIDCs disponíveis e devolve top-3 recomendações.
+- **Credit scoring de empresas pagadoras** — score de crédito por CNPJ enriquecido com setor (CNAE) e UF.
+
+Tudo materializado em um `data.json` único, servido como SPA estática no GitHub Pages.
+
+---
+
+## Páginas do dashboard
 
 | Página | O que mostra |
-|--------|--------------|
-| **Visão Geral** | KPIs + Top 10 FIDCs por score + tabela de ranking |
-| **Score & Risco** | Distribuição por classe + scatter retorno × score |
-| **Cenário Macro** | SELIC, IPCA, CDI + análise de impacto |
-| **Recomendação PME** | Top-3 FIDCs por segmento com matching por aderência |
-
-> Conexão Power BI: [docs/powerbi_setup.md](docs/powerbi_setup.md)
+|---|---|
+| **Visão geral** | KPIs principais (FIDCs analisados, clientes cadastrados, empresas avaliadas) + cenário macroeconômico (SELIC atual, CDI, IPCA 12m, projeções Focus) + Top 10 FIDCs ajustados por risco. |
+| **FIDCs** | Tabela paginada com filtros (busca, risco, tipo de cota, perfil), card de estatísticas com IQR (retorno máx/mín, volatilidade, inadimplência, score) e scatter Risco × Retorno em escala log. |
+| **Recomendações** | Match cliente × fundo: seletor de cliente, top-3 fundos por score e ranking agregado dos fundos mais recomendados. |
+| **Credit scoring** | Empresas pagadoras com score 0-100, probabilidade de default, setor (CNAE), UF e flag `dados_suficientes` (gating em ≥ 20 boletos). |
 
 ---
 
-## 🏗 Arquitetura
+## Arquitetura
 
 ```
 ANBIMA · BCB · CVM
         ↓
 Azure Data Factory (cron 6h UTC)
         ↓
-ADLS Gen2 — Bronze (CSV) → Silver (Parquet) → Gold (Parquet + CSV)
-        ↓                                         ↓
-   Databricks                            gold/powerbi/*.csv
-   notebooks Spark                              ↓
-                                ┌────────────────┴────────────────┐
-                                ↓                                 ↓
-                    GitHub Action (cron 9h UTC)          Power BI Desktop
-                    gera data.json e commita
-                                ↓
-                       GitHub Pages serve
-                       dashboard atualizado
+ADLS Gen2 — Bronze (CSV) → Silver (Parquet) → Gold (Parquet + XLSX)
+        ↓
+   Databricks (notebooks Spark)
+        ↓
+ADLS Gen2 — gold/final/  (rating_fidc.xlsx, matches.xlsx, clientes.csv,
+                          scores_credito.csv, macroeconomicos/, ...)
+        ↓
+GitHub Action (cron 9h UTC) ← AZURE_CONNECTION_STRING (secret)
+        ↓
+generate_dashboard_data.py
+  • lê o Gold (Account Key auth)
+  • valida cada DataFrame contra pandera (lazy=True)
+  • escreve data.json + data-quality.json
+        ↓
+GitHub Pages serve a SPA (index.html + assets/)
 ```
 
-Detalhe: [docs/arquitetura.md](docs/arquitetura.md)
+Detalhes em [`docs/arquitetura.md`](docs/arquitetura.md).
 
 ---
 
-## 🔄 Fluxo de Atualização
+## Stack
 
-O dashboard é **estático no GitHub Pages**, mas atualizado automaticamente:
+**Backend (pipeline)**
+- Python 3.11 · pandas · pyarrow · openpyxl
+- pandera (DataFrameModels com `lazy=True`, `strict=False`)
+- azure-storage-file-datalake (Account Key + ETag cache)
+- structlog (JSON logs)
 
-1. **6h UTC** — Azure Data Factory dispara a pipeline Databricks.
-2. Notebooks Bronze → Silver → Gold geram parquets e CSVs em `dfdatalakesprint/gold/final/`.
-3. **9h UTC** — `.github/workflows/data-refresh.yml` (cron) executa
-   `scripts/generate_dashboard_data.py`, que lê os arquivos do ADLS Gen2 (`gold/final/`), gera o `data.json` e
-   commita no repositório se houve mudança.
-4. GitHub Pages publica a nova versão automaticamente.
+**Frontend (dashboard)**
+- HTML + JavaScript ES modules (vanilla — sem framework, sem build step)
+- Chart.js 4 (doughnut, horizontal bar, scatter log-Y)
+- CSS custom properties (tokens em `assets/css/tokens.css`)
 
-Para que o GitHub Action funcione, configure o secret `AZURE_CONNECTION_STRING` em
-**Settings → Secrets and variables → Actions**.
+**Infraestrutura**
+- Azure Data Lake Storage Gen2 (`dfdatalakesprint/gold/final/`)
+- GitHub Actions (CI + data refresh agendado + notifier de falhas)
+- GitHub Pages (hospedagem da SPA)
 
----
-
-## ⚙️ Workflows GitHub Actions
-
-O repositório roda 3 workflows independentes em `.github/workflows/`:
-
-| Workflow | Trigger | Função |
-|----------|---------|--------|
-| [`ci.yml`](.github/workflows/ci.yml) | `pull_request` para `main` + `push` em qualquer branch | Lint (`ruff check`), format check (`ruff format --check`), type check (`mypy`), unit tests (`pytest`) e secret scan (`gitleaks`) — todos em jobs paralelos com cache de pip. Target: ~2 min. Falha bloqueia merge via branch protection (ver [`docs/runbook.md`](docs/runbook.md)). |
-| [`data-refresh.yml`](.github/workflows/data-refresh.yml) | `schedule` (cron `0 9 * * *` UTC) + `workflow_dispatch` | Lê o Gold do ADLS Gen2 (`dfdatalakesprint/gold/final/`), valida o secret `AZURE_CONNECTION_STRING`, regenera `data.json` e commita em `main` se houve mudança. Concorrência serializada (`cancel-in-progress: false`) para evitar commits pela metade. |
-| [`notify-failures.yml`](.github/workflows/notify-failures.yml) | `workflow_run` (`completed`) sobre `data-refresh.yml` | Em falha: abre (ou comenta em) issue com label `data-refresh-failure` incluindo link do run, step que falhou e últimas 50 linhas do log. Em sucesso: fecha automaticamente as issues abertas com essa label. De-duplica por label para não inundar o repo. |
-
-### Status checks obrigatórios em `main`
-
-Depois do merge do `ci.yml`, ative branch protection com os 5 checks
-listados em [`docs/runbook.md`](docs/runbook.md#status-checks-obrigatórios)
-(`lint-python`, `lint-python-format`, `type-check`, `unit-tests`,
-`secret-scan`). A ativação é manual — o GitHub não expõe a configuração
-via REST API simples para `Allow specified actors to bypass`, que é
-necessária para o `github-actions[bot]` continuar commitando `data.json`.
+**Qualidade**
+- pytest (unit) — 196 testes verdes, cobertura > 90% em `scripts/lib/`
+- Playwright (smoke e2e) — 5 cenários cobrindo KPIs, gráficos, tabelas
+- ruff (lint + format) · mypy (strict)
+- gitleaks (secret scan no CI)
 
 ---
 
-## 📁 Estrutura do Repositório
-
-```
-radar-fidc/
-├── index.html                          # Dashboard (carrega data.json via fetch)
-├── data.json                           # Dados atuais — gerado pelo pipeline
-├── .env.example                        # Template de variáveis de ambiente
-├── requirements.txt                    # Dependências Python
-│
-├── .github/workflows/
-│   ├── ci.yml                          # PR/push checks (ruff + mypy + pytest + gitleaks)
-│   ├── data-refresh.yml                # GitHub Action de atualização diária (lê ADLS → data.json)
-│   └── notify-failures.yml             # Reaction workflow: issues automáticas em falha do data-refresh
-│
-├── scripts/
-│   └── generate_dashboard_data.py      # ADLS gold/final/ → data.json
-│
-├── notebooks/
-│   ├── _common.py                      # Helper compartilhado (secrets)
-│   │
-│   ├── 01_bronze_ingestao/             # Ingestão das fontes
-│   │   ├── etl_anbima.py               #   ANBIMA API → ADLS Bronze
-│   │   ├── etl_bcb.py                  #   BCB/SGS → ADLS Bronze
-│   │   └── etl_cda.py                  #   CVM CDA → ADLS Bronze
-│   │
-│   ├── 02_silver_tratamento/           # Limpeza e padronização
-│   │   ├── etl_anbima.py
-│   │   ├── etl_macro.py
-│   │   └── etl_cda.py
-│   │
-│   └── 03_gold_modelagem/              # Modelagem analítica
-│       ├── 00_schema_report.py         #   Validação de schemas Silver
-│       ├── 01_score_fidc.py            #   Score por FIDC (percentil)
-│       ├── 02_indicadores_macro.py     #   Indicadores macro consolidados
-│       ├── 03_recomendacao_pme.py      #   Matching PME × FIDC por segmento
-│       ├── 04_dashboard_master.py      #   Tabela mestre
-│       ├── 05_export_csv.py            #   Parquet → CSV (Power BI)
-│       └── orquestrador_gold.py        #   Roda 00–05 em sequência
-│
-└── docs/                               # Documentação técnica
-    ├── arquitetura.md                   # Visão geral do sistema (Medallion + ADLS)
-    ├── modelo_score.md                  # Pipeline de rating dos FIDCs
-    ├── credit_model.md                  # Modelo de crédito por empresa pagadora
-    ├── match_engine.md                  # Engine de match cliente × FIDC
-    ├── fontes_dados.md                  # ANBIMA + BCB + CVM + estrutura Gold
-    ├── powerbi_setup.md                 # Conexão Power BI Desktop
-    ├── runbook.md                       # Playbook operacional (falhas, rotação, heurísticas)
-    ├── operacao.md                      # Estado atual (auto-atualizado pelo workflow)
-    ├── limitacoes_atuais.md             # Heurísticas ativas + histórico de substituições
-    ├── historico-runs.csv               # Histórico completo de runs do data-refresh
-    ├── plans/                           # Planos de fase (execução)
-    └── superpowers/specs/               # Specs de design (brainstorming)
-```
-
----
-
-## ⚙️ Como Executar
+## Como rodar localmente
 
 ### Pré-requisitos
 
-- Python 3.10+
-- Acesso ao ADLS Gen2 (`dfdatalakesprint`) — connection string (rotacionada trimestralmente)
-- Credenciais ANBIMA (Client ID / Secret) — se for rodar a ingestão
-- Workspace Databricks — para executar os notebooks em produção
+- Python 3.11+
+- Node 20+ (apenas para rodar os e2e)
+- Connection string da conta ADLS Gen2 com leitura em `gold/final/`
 
-### 1. Clonar e instalar
+### Setup
 
 ```bash
 git clone https://github.com/victorsouza14/radar-fidc.git
 cd radar-fidc
+
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-```
+pip install -r requirements.txt -r requirements-dev.txt
 
-### 2. Configurar variáveis
-
-```bash
 cp .env.example .env
-# Preencher AZURE_CONNECTION_STRING, ANBIMA_CLIENT_ID, ANBIMA_CLIENT_SECRET
-export $(grep -v '^#' .env | xargs)
+# Edite .env e preencha AZURE_CONNECTION_STRING.
 ```
 
-### 3. Pipeline completa no Databricks
-
-Faça upload da pasta `notebooks/` para o workspace e execute na ordem:
-
-```
-01_bronze_ingestao/* → 02_silver_tratamento/* → 03_gold_modelagem/orquestrador_gold.py
-```
-
-Os notebooks usam `_common.azure_connection_string()`, que resolve automaticamente
-entre Databricks Secret Scope (`scope=escopo`, `key=AZURECONNSTRING`) e `os.environ`.
-
-### 4. Atualizar o dashboard localmente
+### Gerar `data.json`
 
 ```bash
-# Carrega .env (precisa AZURE_CONNECTION_STRING válida para dfdatalakesprint)
 set -a && source .env && set +a
-
-# Gera data.json lendo direto do ADLS
 python scripts/generate_dashboard_data.py
-
-# Saída customizada (útil para diff)
-python scripts/generate_dashboard_data.py --output /tmp/data.json
 ```
 
-O cache local em `.cache/` (ignorado pelo Git) acelera execuções subsequentes
-via validação de ETag — só re-baixa arquivo que mudou no Gold.
+O parse cache em `.cache/` (gitignored) acelera execuções subsequentes via comparação de ETag — só re-baixa arquivo que mudou no Gold.
 
-### 5. Servir o dashboard
+Flags úteis:
 
 ```bash
-# Local
+python scripts/generate_dashboard_data.py --output /tmp/data.json
+python scripts/generate_dashboard_data.py --regression-result pass --smoke-result pass
+```
+
+### Servir a SPA
+
+```bash
 python -m http.server 8000
 # abre http://localhost:8000
+```
 
-# Online
-# https://victorsouza14.github.io/radar-fidc
+Tudo é estático: `index.html` carrega `assets/js/main.js`, que busca `data.json?v=<timestamp>` (cache-busting) e hidrata o `Store`.
+
+---
+
+## Pipeline automatizado
+
+Três workflows independentes em `.github/workflows/`:
+
+| Workflow | Trigger | Função |
+|---|---|---|
+| [`ci.yml`](.github/workflows/ci.yml) | PR + push em qualquer branch | Lint (ruff), format check, type check (mypy), unit tests (pytest) e secret scan (gitleaks) em jobs paralelos. ~2 min. |
+| [`data-refresh.yml`](.github/workflows/data-refresh.yml) | Cron `0 9 * * *` UTC + dispatch manual | Lê o Gold do ADLS, regenera `data.json` + `data-quality.json`, roda regression check contra HEAD~1 e commita em `main` se houve mudança. |
+| [`notify-failures.yml`](.github/workflows/notify-failures.yml) | `workflow_run` sobre o data-refresh | Em falha: abre/comenta issue com label `data-refresh-failure`. Em sucesso: fecha as issues abertas. De-duplica por label. |
+
+Secrets obrigatórios em **Settings → Secrets and variables → Actions**:
+
+- `AZURE_CONNECTION_STRING` — connection string da conta `dfdatalakesprint`.
+
+---
+
+## Estrutura do repositório
+
+```
+radar-fidc/
+├── index.html                       # SPA shell (carrega data.json)
+├── data.json                        # Payload atual (gerado pelo pipeline)
+├── data-quality.json                # Manifesto de auditoria server-side
+├── .env.example                     # Template de variáveis
+├── requirements.txt                 # Runtime Python
+├── requirements-dev.txt             # Dev tools (pytest, ruff, mypy, ...)
+├── package.json                     # Playwright + servidor estático
+│
+├── .github/workflows/               # ci · data-refresh · notify-failures
+│
+├── assets/
+│   ├── css/                         # tokens · base · components · layout · main
+│   └── js/
+│       ├── main.js                  # Bootstrap: carrega data.json e registra rotas
+│       ├── router.js                # SPA sem hash routing — toggle .active
+│       ├── store.js                 # Estado imutável + isValid()
+│       ├── theme.js                 # RISCO_ORDER / PERFIL_ORDER + tokens de cor
+│       ├── ui.js                    # Sidebar, theme menu, keyboard shortcuts
+│       ├── components/              # chart-factory · paginated-table · empty-state
+│       │                            # · fetch-error · select · table
+│       ├── pages/                   # overview · fidcs · match · credit
+│       └── utils/                   # dom · format · memo · pagination
+│
+├── scripts/
+│   ├── generate_dashboard_data.py   # ADLS Gold → data.json + data-quality.json
+│   ├── run_regression_check.py      # Diff sanity vs HEAD~1 (CI)
+│   ├── smoke_summary.py             # Resumo dos e2e Playwright (CI)
+│   ├── update_operacao_doc.py       # Append em docs/operacao.md + historico-runs.csv
+│   ├── lib/
+│   │   ├── azure_io.py              # ADLS Gen2 client + ETag + parse cache (.feather)
+│   │   ├── cnae_setor.py            # CNAE 2.0 → divisão IBGE (setor humano)
+│   │   ├── formatters.py            # Máscaras LGPD + helpers numéricos
+│   │   ├── gold_paths.py            # Constantes de paths no Gold
+│   │   ├── io_utils.py              # Readers + pandera validation por seção
+│   │   ├── logger.py                # structlog JSON
+│   │   ├── payload.py               # Builders por seção do data.json (puros)
+│   │   ├── perfil_rules.py          # Tabelas TIPO_COTA × CATEGORIA_RISCO
+│   │   ├── regression_check.py      # Lógica do diff vs HEAD~1
+│   │   ├── scenario.py              # Classificação de cenário macro (SELIC)
+│   │   ├── schemas.py               # DataFrameModels pandera
+│   │   └── trust_manifest.py        # Builder do data-quality.json
+│   └── tests/                       # pytest — ~196 testes cobrindo lib/*
+│
+├── notebooks/                       # Pipeline Databricks (Bronze · Silver · Gold)
+│
+├── tests/e2e/dashboard.spec.ts      # Playwright — smoke tests da SPA
+├── playwright.config.ts
+│
+└── docs/
+    ├── arquitetura.md               # Visão geral end-to-end
+    ├── fontes_dados.md              # ANBIMA + BCB + CVM + shape do Gold
+    ├── runbook.md                   # Incidentes, rotação de Account Key, gates
+    ├── operacao.md                  # Auto-gerado: últimas runs + SLOs
+    └── historico-runs.csv           # Append-only de cada run do data-refresh
 ```
 
 ---
 
-## 📡 Fontes de Dados
+## Testes
 
-| Fonte | Dados | Documentação |
-|-------|-------|--------------|
-| **ANBIMA API** | Cadastro e histórico de FIDCs | [docs/fontes_dados.md](docs/fontes_dados.md) |
-| **BCB — SGS** | SELIC, IPCA, CDI, indicadores macro | [docs/fontes_dados.md](docs/fontes_dados.md) |
-| **CVM CDA** | Composição da carteira mensal | [docs/fontes_dados.md](docs/fontes_dados.md) |
+```bash
+# Unit (Python) — ~196 testes, < 1s
+cd scripts && python -m pytest
+
+# Cobertura
+cd scripts && python -m pytest --cov=lib --cov-report=term-missing
+
+# Smoke e2e (Playwright)
+npm install
+npm run test:e2e:install     # baixa Chromium
+npm run serve &              # python -m http.server 8000
+npm run test:e2e
+```
+
+Os testes Python são **herméticos**: nada bate no ADLS. Cada reader é exercitado com fixtures que replicam a forma do Gold (snapshot 2026-05-14) e validadores monkeypatched do `azure_io`.
 
 ---
 
-## 🔒 LGPD e Limitações conhecidas
+## Privacidade (LGPD)
 
-### Tratamento de PII
+`clientes.csv` e `matches.xlsx` contêm dados acadêmicos com nomes fictícios. Mesmo assim, **toda PII é mascarada** no builder antes de chegar ao `data.json` público:
 
-O dataset `clientes.csv` (em `gold/final/clientes.csv` no ADLS) contém dados de teste/acadêmicos com nomes
-fictícios. Mesmo assim, **todos os campos PII** (CPF, e-mail, telefone, nome
-completo) são **mascarados** antes de chegarem ao `data.json` público:
-
-| Campo | Exemplo no JSON | Helper |
+| Campo | Exemplo emitido | Helper |
 |---|---|---|
 | CPF | `***.***.***-41` | `mask_cpf` |
 | Nome | `Ana L.` | `mask_name` |
 | E-mail | `c***@****.com` | `mask_email` |
-| Telefone | `(11) ****-8753` | `mask_phone` |
-| Hash de empresa (credit) | `EMP-D510A11A` | `_anon_id` |
+| Empresa (credit) | `Empresa A3B5C2D9E5F1` | `_nome_empresa` (12 hex do SHA-256 do CNPJ) |
 
-Helpers em [`scripts/lib/formatters.py`](scripts/lib/formatters.py).
+Telefone, renda, experiência, horizonte e data de cadastro **não são emitidos** no payload — ficam apenas no Gold para uso interno do match engine.
 
-### Limitações dos modelos
-
-- **Credit model**: snapshot single-cohort, sem variáveis macro nas features. Retreino multi-cohort depende de histórico mensal de clientes no Gold (pendente no pipeline Databricks).
-
-Ver [`docs/limitacoes_atuais.md`](docs/limitacoes_atuais.md) para a lista viva, detalhes técnicos e histórico de heurísticas já substituídas (K-Means → tercis, `selic-0.5` → Focus BCB, match com filtros CVM 555 + segmento).
-
-Detalhes técnicos por modelo:
-- [docs/modelo_score.md](docs/modelo_score.md)
-- [docs/credit_model.md](docs/credit_model.md)
-- [docs/match_engine.md](docs/match_engine.md)
+Helpers em [`scripts/lib/formatters.py`](scripts/lib/formatters.py); regressão de PII coberta em [`scripts/tests/test_formatters_mask.py`](scripts/tests/test_formatters_mask.py).
 
 ---
 
-## 🎯 Modelo de Score
-
-Score ponderado de **0 a 100** por FIDC, com **normalização por percentil**
-(robusto a outliers e produz distribuição realista A/B/C/D):
-
-| Componente | Peso | Descrição |
-|-----------|------|-----------|
-| Retorno histórico | **40%** | Percentil do retorno médio 12m |
-| Risco / Volatilidade | **30%** | Percentil inverso (cap p99) |
-| Cenário Macro | **20%** | Variável por indexador (CDI+/pré/indef.) |
-| Liquidez | **10%** | Percentil do número de observações |
-
-Classificação:
-
-| Classe | Score |
-|--------|-------|
-| 🟢 **A** | 80–100 |
-| 🟡 **B** | 60–79 |
-| 🟠 **C** | 40–59 |
-| 🔴 **D** | 0–39 |
-
-Detalhes: [docs/modelo_score.md](docs/modelo_score.md)
-
----
-
-## 🛠 Operação
-
-O dashboard atualiza automaticamente via GitHub Actions (cron 9h UTC). Para resposta a incidentes, rotação de credenciais e evolução do manifesto de qualidade, comece pelo runbook.
+## Operação
 
 | Documento | Para que serve |
-|-----------|----------------|
-| [`docs/runbook.md`](docs/runbook.md) | Playbook completo: branch protection, fluxo diário, diagnóstico por modo de falha, rotação de Account Key, gestão de heurísticas. |
-| [`docs/operacao.md`](docs/operacao.md) | Estado atual auto-atualizado: último run, últimos 14 runs, histórico de rotação de keys, SLOs alvo. |
-| [`docs/historico-runs.csv`](docs/historico-runs.csv) | Histórico completo de execuções do `data-refresh.yml` (append-only). |
-| [`docs/limitacoes_atuais.md`](docs/limitacoes_atuais.md) | Heurísticas ativas + histórico de substituições. |
+|---|---|
+| [`docs/runbook.md`](docs/runbook.md) | Playbook: gates do CI, rotação de Account Key, modos de falha, gestão de heurísticas. |
+| [`docs/operacao.md`](docs/operacao.md) | Estado atual auto-atualizado: último run, últimos 14 runs, SLOs alvo. |
+| [`docs/historico-runs.csv`](docs/historico-runs.csv) | Append-only de cada execução do `data-refresh.yml`. |
+| `data-quality.json` | Manifesto server-side: schema validation, freshness por fonte, heurísticas ativas, GE result. Consumido pelo `update_operacao_doc.py`. |
 
 ---
 
-## 👥 Time
+## Time
 
-**Data Fishermans** — FIAP | Sprint Final 2026
+**Data Fishermans** — FIAP, Sprint Final 2026.
 
 | Membro | RM |
-|--------|-----|
+|---|---|
 | Victor de Souza Braga | RM567360 |
 | Andre Marques | RM566584 |
 | Jony Wesley Sousa Melo | RM567392 |
@@ -340,7 +300,6 @@ O dashboard atualiza automaticamente via GitHub Actions (cron 9h UTC). Para resp
 
 ---
 
-## 📄 Licença
+## Licença
 
-Projeto desenvolvido para fins acadêmicos — FIAP 2026.
-Os dados de FIDCs são públicos e fornecidos pela ANBIMA, BCB e CVM.
+Projeto desenvolvido para fins acadêmicos (FIAP, 2026). Os dados de FIDCs são públicos e fornecidos por ANBIMA, BCB e CVM.
