@@ -7,11 +7,11 @@
 ## Último run
 
 <!-- last-update:start -->
-- **Timestamp:** _aguardando primeiro run em produção_
-- **Status:** —
-- **Duração:** —
-- **Bytes lidos:** —
-- **Pipeline ID:** —
+- **Timestamp:** 2026-05-15T11:19:26Z
+- **Status:** success
+- **Duração:** 1m10s
+- **Bytes lidos:** 322.9 KB
+- **Pipeline ID:** 25915010582
 <!-- last-update:end -->
 
 ## Últimos 14 runs
@@ -21,6 +21,7 @@ A tabela abaixo é truncada para os 14 runs mais recentes (cerca de 2 semanas co
 | Data (UTC) | Status | Duração | Bytes | Pipeline ID |
 |------------|--------|---------|-------|-------------|
 <!-- runs:start -->
+| 2026-05-15T11:19:26Z | success | 1m10s | 322.9 KB | 25915010582 |
 <!-- runs:end -->
 
 ## Issues abertos de `data-refresh-failure`
