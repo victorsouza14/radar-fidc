@@ -7,11 +7,11 @@
 ## Último run
 
 <!-- last-update:start -->
-- **Timestamp:** 2026-05-21T12:12:49Z
+- **Timestamp:** 2026-05-22T11:43:26Z
 - **Status:** success
-- **Duração:** 1m00s
+- **Duração:** 57s
 - **Bytes lidos:** 322.9 KB
-- **Pipeline ID:** 26225125720
+- **Pipeline ID:** 26285743869
 <!-- last-update:end -->
 
 ## Últimos 14 runs
@@ -21,6 +21,7 @@ A tabela abaixo é truncada para os 14 runs mais recentes (cerca de 2 semanas co
 | Data (UTC) | Status | Duração | Bytes | Pipeline ID |
 |------------|--------|---------|-------|-------------|
 <!-- runs:start -->
+| 2026-05-22T11:43:26Z | success | 57s | 322.9 KB | 26285743869 |
 | 2026-05-21T12:12:49Z | success | 1m00s | 322.9 KB | 26225125720 |
 | 2026-05-20T11:50:18Z | success | 3m23s | 322.9 KB | 26160461993 |
 | 2026-05-19T11:59:49Z | success | 1m01s | 322.9 KB | 26095678701 |
