@@ -7,11 +7,11 @@
 ## Último run
 
 <!-- last-update:start -->
-- **Timestamp:** 2026-06-07T11:06:41Z
+- **Timestamp:** 2026-06-08T13:03:40Z
 - **Status:** success
-- **Duração:** 1m03s
+- **Duração:** 1m08s
 - **Bytes lidos:** 322.9 KB
-- **Pipeline ID:** 27090727361
+- **Pipeline ID:** 27139464750
 <!-- last-update:end -->
 
 ## Últimos 14 runs
@@ -21,6 +21,7 @@ A tabela abaixo é truncada para os 14 runs mais recentes (cerca de 2 semanas co
 | Data (UTC) | Status | Duração | Bytes | Pipeline ID |
 |------------|--------|---------|-------|-------------|
 <!-- runs:start -->
+| 2026-06-08T13:03:40Z | success | 1m08s | 322.9 KB | 27139464750 |
 | 2026-06-07T11:06:41Z | success | 1m03s | 322.9 KB | 27090727361 |
 | 2026-06-06T10:52:30Z | success | 1m05s | 322.9 KB | 27060296378 |
 | 2026-06-05T11:59:56Z | success | 1m10s | 322.9 KB | 27013513941 |
@@ -34,7 +35,6 @@ A tabela abaixo é truncada para os 14 runs mais recentes (cerca de 2 semanas co
 | 2026-05-28T12:23:49Z | success | 1m03s | 322.9 KB | 26574379769 |
 | 2026-05-25T12:26:01Z | success | 1m02s | 322.9 KB | 26400369348 |
 | 2026-05-24T10:28:57Z | success | 1m03s | 322.9 KB | 26358763870 |
-| 2026-05-23T10:25:05Z | success | 1m02s | 322.9 KB | 26330275594 |
 <!-- runs:end -->
 
 ## Issues abertos de `data-refresh-failure`
